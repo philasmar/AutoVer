@@ -21,7 +21,7 @@ public class ProjectHandler(
         if (directoryManager.Exists(projectPath))
         {
             projectPath = directoryManager.GetDirectoryInfo(projectPath).FullName;
-            var files = directoryManager.GetFiles(projectPath, "*.csproj").ToList();
+            var files = directoryManager.GetFiles(projectPath, "*.csproj", SearchOption.AllDirectories).ToList();
             foreach (var file in files)
             {
                 var newPath = Path.Combine(projectPath, file);
