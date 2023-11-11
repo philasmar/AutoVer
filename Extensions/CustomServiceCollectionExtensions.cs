@@ -1,5 +1,6 @@
 using AutoVer.Commands;
 using AutoVer.Services;
+using AutoVer.Services.IO;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -12,6 +13,9 @@ public static class CustomServiceCollectionExtensions
     {
         serviceCollection.TryAdd(new ServiceDescriptor(typeof(ICommandFactory), typeof(CommandFactory), lifetime));
         serviceCollection.TryAdd(new ServiceDescriptor(typeof(IToolInteractiveService), typeof(ConsoleInteractiveService), lifetime));
+        serviceCollection.TryAdd(new ServiceDescriptor(typeof(IDirectoryManager), typeof(DirectoryManager), lifetime));
+        serviceCollection.TryAdd(new ServiceDescriptor(typeof(IFileManager), typeof(FileManager), lifetime));
+        serviceCollection.TryAdd(new ServiceDescriptor(typeof(IProjectHandler), typeof(ProjectHandler), lifetime));
         
         serviceCollection.AddSingleton<App>();
     }

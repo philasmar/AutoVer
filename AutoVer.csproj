@@ -9,6 +9,7 @@
         <ToolCommandName>autover</ToolCommandName>
         <PackAsTool>True</PackAsTool>
         <IsPackable>true</IsPackable>
+        <Version>0.0.1</Version>
     </PropertyGroup>
 
     <ItemGroup>
