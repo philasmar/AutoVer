@@ -4,14 +4,10 @@ using AutoVer.Services.IO;
 
 namespace AutoVer.Services;
 
-public interface IProjectHandler
-{
-    Task<List<ProjectDefinition>> GetAvailableProjects(string projectPath);
-}
-
 public class ProjectHandler(
     IDirectoryManager directoryManager,
-    IFileManager fileManager
+    IFileManager fileManager,
+    IVersionIncrementer versionIncrementer
     ) : IProjectHandler
 {
     public async Task<List<ProjectDefinition>> GetAvailableProjects(string projectPath)
@@ -30,7 +26,7 @@ public class ProjectHandler(
             }
         }
 
-        if (!projectPaths.Any())
+        if (projectPaths.Count == 0)
         {
             throw new Exception($"Failed to find a valid .csproj file at path {projectPath}");
         }
@@ -46,7 +42,7 @@ public class ProjectHandler(
                 throw new Exception(errorMessage);
             }
             
-            var xmlProjectFile = new XmlDocument();
+            var xmlProjectFile = new XmlDocument{ PreserveWhitespace = true };
             xmlProjectFile.LoadXml(await fileManager.ReadAllTextAsync(project));
             
             var projectDefinition =  new ProjectDefinition(
@@ -64,5 +60,16 @@ public class ProjectHandler(
         }
 
         return projectDefinitions;
+    }
+
+    public void UpdateVersion(ProjectDefinition projectDefinition)
+    {
+        var versionTag = projectDefinition.Contents.GetElementsByTagName("Version");
+        var nextVersion = versionIncrementer.GetNextVersion(versionTag[0]?.InnerText);
+        if (versionTag != null && versionTag.Count > 0)
+        {
+            versionTag[0].InnerText = nextVersion.ToString();
+        }
+        projectDefinition.Contents.Save(projectDefinition.ProjectPath);
     }
 }

@@ -5,10 +5,13 @@ namespace AutoVer.Commands;
 public class InfoCommand(
     IProjectHandler projectHandler,
     IToolInteractiveService toolInteractiveService,
-    IVersionIncrementer versionIncrementer)
+    IVersionIncrementer versionIncrementer,
+    IGitHandler gitHandler)
 {
     public async Task ExecuteAsync(string projectPath, string? nextVersion)
     {
+        var sourceControlRootDirectory = gitHandler.FindGitRootDirectory(projectPath);
+        var tags = gitHandler.GetGitTags(projectPath);
         var availableProjects = await projectHandler.GetAvailableProjects(projectPath);
         if (availableProjects.Count == 1)
         {

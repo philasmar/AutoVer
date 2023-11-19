@@ -11,7 +11,7 @@ public class ThreePartVersionIncrementer : IVersionIncrementer
         return ThreePartVersion.Parse(versionText);
     }
 
-    public ThreePartVersion GetNextVersion(string? versionText, string? nextVersion)
+    public ThreePartVersion GetNextVersion(string? versionText, string? nextVersion = null)
     {
         var currentVersion = GetCurrentVersion(versionText);
 

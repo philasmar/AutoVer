@@ -5,5 +5,5 @@ namespace AutoVer.Services;
 public interface IVersionIncrementer
 {
     ThreePartVersion GetCurrentVersion(string? versionText);
-    ThreePartVersion GetNextVersion(string? versionText, string? nextVersion);
+    ThreePartVersion GetNextVersion(string? versionText, string? nextVersion = null);
 }

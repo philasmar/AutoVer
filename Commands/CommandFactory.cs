@@ -1,4 +1,5 @@
 using System.CommandLine;
+using AutoVer.Models.CommandInputs;
 using AutoVer.Services;
 
 namespace AutoVer.Commands;
@@ -11,7 +12,8 @@ public interface ICommandFactory
 public class CommandFactory(
     IProjectHandler projectHandler,
     IToolInteractiveService toolInteractiveService,
-    IVersionIncrementer versionIncrementer
+    IVersionIncrementer versionIncrementer,
+    IGitHandler gitHandler
     ) : ICommandFactory
 {
     private static readonly Option<string> OptionProjectPath = new("--project-path", Directory.GetCurrentDirectory, "Path to the project");
@@ -30,11 +32,29 @@ public class CommandFactory(
         
         lock(RootCommandLock)
         {
+            rootCommand.Add(BuildConfigureCommand());
             rootCommand.Add(BuildVersionCommand());
             rootCommand.Add(BuildInfoCommand());
         }
 
         return rootCommand;
+    }
+
+    private Command BuildConfigureCommand()
+    {
+        var configureCommand = new Command(
+            "configure",
+            "Configure AutoVer to set versioning preferences.");
+
+        var input = new ConfigureCommandInput();
+        
+        configureCommand.SetHandler(async () =>
+        {
+            var command = new ConfigureCommand(input);
+            await command.ExecuteAsync();
+        });
+        
+        return configureCommand;
     }
 
     private Command BuildVersionCommand()
@@ -53,7 +73,7 @@ public class CommandFactory(
             var availableProjects = await projectHandler.GetAvailableProjects(optionProjectPath);
             foreach (var availableProject in availableProjects)
             {
-                
+                projectHandler.UpdateVersion(availableProject);
             }
         }, OptionProjectPath);
 
@@ -77,9 +97,12 @@ public class CommandFactory(
             var command = new InfoCommand(
                 projectHandler,
                 toolInteractiveService,
-                versionIncrementer);
+                versionIncrementer,
+                gitHandler);
             return command.ExecuteAsync(optionProjectPath, optionNextVersion);
-        }, OptionProjectPath, OptionNextVersion);
+        }, 
+            OptionProjectPath, 
+            OptionNextVersion);
 
         return infoCommand;
     }
