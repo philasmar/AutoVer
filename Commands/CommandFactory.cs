@@ -1,5 +1,7 @@
 using System.CommandLine;
-using AutoVer.Models.CommandInputs;
+using AutoVer.Constants;
+using AutoVer.Extensions;
+using AutoVer.Models;
 using AutoVer.Services;
 
 namespace AutoVer.Commands;
@@ -17,7 +19,8 @@ public class CommandFactory(
     ) : ICommandFactory
 {
     private static readonly Option<string> OptionProjectPath = new("--project-path", Directory.GetCurrentDirectory, "Path to the project");
-    private static readonly Option<string> OptionNextVersion = new("--next-version", "Sets the next version");
+    private static readonly Option<string> OptionIncrementType = new("--increment-type", Increment.Patch.ToString, "Increment type. Available values: Major, Minor, Patch.");
+    private static readonly Option<bool> OptionSkipVersionTagCheck = new(new[] { "--skip-version-tag-check" }, $"Skip version tag check and increment projects even if some don't have a {ProjectConstants.VersionTag} tag.");
     private static readonly object RootCommandLock = new();
     private static readonly object ChildCommandLock = new();
     
@@ -45,12 +48,10 @@ public class CommandFactory(
         var configureCommand = new Command(
             "configure",
             "Configure AutoVer to set versioning preferences.");
-
-        var input = new ConfigureCommandInput();
         
         configureCommand.SetHandler(async () =>
         {
-            var command = new ConfigureCommand(input);
+            var command = new ConfigureCommand();
             await command.ExecuteAsync();
         });
         
@@ -66,16 +67,40 @@ public class CommandFactory(
         lock (ChildCommandLock)
         {
             versionCommand.Add(OptionProjectPath);
+            versionCommand.Add(OptionIncrementType);
+            versionCommand.Add(OptionSkipVersionTagCheck);
         }
 
-        versionCommand.SetHandler(async (optionProjectPath) =>
+        versionCommand.SetHandler(async (context) =>
         {
-            var availableProjects = await projectHandler.GetAvailableProjects(optionProjectPath);
-            foreach (var availableProject in availableProjects)
+            try
             {
-                projectHandler.UpdateVersion(availableProject);
+                var optionProjectPath = context.ParseResult.GetValueForOption(OptionProjectPath);
+                var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
+                var optionSkipVersionTagCheck = context.ParseResult.GetValueForOption(OptionSkipVersionTagCheck);
+                
+                var command = new VersionCommand(projectHandler);
+                await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck);
+                    
+                context.ExitCode = CommandReturnCodes.Success;
             }
-        }, OptionProjectPath);
+            catch (Exception e) when (e.IsExpectedException())
+            {
+                toolInteractiveService.WriteErrorLine(string.Empty);
+                toolInteractiveService.WriteErrorLine(e.Message);
+                    
+                context.ExitCode = CommandReturnCodes.UserError;
+            }
+            catch (Exception e)
+            {
+                // This is a bug
+                toolInteractiveService.WriteErrorLine(
+                    "Unhandled exception.\r\nThis is a bug.\r\nPlease copy the stack trace below and file a bug at https://github.com/philasmar/autover. " +
+                    e.PrettyPrint());
+                    
+                context.ExitCode = CommandReturnCodes.UnhandledException;
+            }
+        });
 
         return versionCommand;
     }
@@ -89,20 +114,18 @@ public class CommandFactory(
         lock (ChildCommandLock)
         {
             infoCommand.Add(OptionProjectPath);
-            infoCommand.Add(OptionNextVersion);
         }
         
-        infoCommand.SetHandler((optionProjectPath, optionNextVersion) =>
+        infoCommand.SetHandler((optionProjectPath) =>
         {
             var command = new InfoCommand(
                 projectHandler,
                 toolInteractiveService,
                 versionIncrementer,
                 gitHandler);
-            return command.ExecuteAsync(optionProjectPath, optionNextVersion);
+            return command.ExecuteAsync(optionProjectPath);
         }, 
-            OptionProjectPath, 
-            OptionNextVersion);
+            OptionProjectPath);
 
         return infoCommand;
     }

@@ -1,9 +1,6 @@
-using AutoVer.Models.CommandInputs;
-
 namespace AutoVer.Commands;
 
-public class ConfigureCommand(
-    ConfigureCommandInput input)
+public class ConfigureCommand
 {
     public async Task ExecuteAsync()
     {

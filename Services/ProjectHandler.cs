@@ -1,4 +1,6 @@
 using System.Xml;
+using AutoVer.Constants;
+using AutoVer.Exceptions;
 using AutoVer.Models;
 using AutoVer.Services.IO;
 
@@ -10,11 +12,11 @@ public class ProjectHandler(
     IVersionIncrementer versionIncrementer
     ) : IProjectHandler
 {
-    public async Task<List<ProjectDefinition>> GetAvailableProjects(string projectPath)
+    public async Task<List<ProjectDefinition>> GetAvailableProjects(string? projectPath)
     {
         var projectPaths = new List<string>();
         
-        if (directoryManager.Exists(projectPath))
+        if (!string.IsNullOrEmpty(projectPath) && directoryManager.Exists(projectPath))
         {
             projectPath = directoryManager.GetDirectoryInfo(projectPath).FullName;
             var files = directoryManager.GetFiles(projectPath, "*.csproj", SearchOption.AllDirectories).ToList();
@@ -50,7 +52,7 @@ public class ProjectHandler(
                 project
             );
             
-            var version = xmlProjectFile.GetElementsByTagName("Version");
+            var version = xmlProjectFile.GetElementsByTagName(ProjectConstants.VersionTag);
             if (version.Count > 0)
             {
                 projectDefinition.Version = version[0]?.InnerText;
@@ -62,14 +64,22 @@ public class ProjectHandler(
         return projectDefinitions;
     }
 
-    public void UpdateVersion(ProjectDefinition projectDefinition)
+    public void UpdateVersion(ProjectDefinition projectDefinition, Increment increment)
     {
-        var versionTag = projectDefinition.Contents.GetElementsByTagName("Version");
-        var nextVersion = versionIncrementer.GetNextVersion(versionTag[0]?.InnerText);
-        if (versionTag != null && versionTag.Count > 0)
-        {
-            versionTag[0].InnerText = nextVersion.ToString();
-        }
+        var versionTagList = projectDefinition.Contents.GetElementsByTagName(ProjectConstants.VersionTag).Cast<XmlNode>().ToList();
+        if (!versionTagList.Any())
+            throw new NoVersionTagException($"The project '{projectDefinition.ProjectPath}' does not have a {ProjectConstants.VersionTag} tag. Add a {ProjectConstants.VersionTag} tag and run the tool again.");
+
+        var versionTag = versionTagList.First();
+        var nextVersion = versionIncrementer.GetNextVersion(versionTag.InnerText, increment);
+        versionTag.InnerText = nextVersion.ToString();
+        
         projectDefinition.Contents.Save(projectDefinition.ProjectPath);
+    }
+
+    public bool ProjectHasVersionTag(ProjectDefinition projectDefinition)
+    {
+        var versionTagList = projectDefinition.Contents.GetElementsByTagName(ProjectConstants.VersionTag).Cast<XmlNode>().ToList();
+        return versionTagList.Any();
     }
 }

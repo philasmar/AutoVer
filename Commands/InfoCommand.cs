@@ -8,16 +8,15 @@ public class InfoCommand(
     IVersionIncrementer versionIncrementer,
     IGitHandler gitHandler)
 {
-    public async Task ExecuteAsync(string projectPath, string? nextVersion)
+    public async Task ExecuteAsync(string projectPath)
     {
         var sourceControlRootDirectory = gitHandler.FindGitRootDirectory(projectPath);
-        var tags = gitHandler.GetGitTags(projectPath);
         var availableProjects = await projectHandler.GetAvailableProjects(projectPath);
         if (availableProjects.Count == 1)
         {
             var version = availableProjects.First().Version;
             toolInteractiveService.WriteLine($"Current version {versionIncrementer.GetCurrentVersion(version)}");
-            toolInteractiveService.WriteLine($"Next version {versionIncrementer.GetNextVersion(version, nextVersion)}");
+            toolInteractiveService.WriteLine($"Next version {versionIncrementer.GetNextVersion(version)}");
         }
         else
         {
@@ -25,7 +24,7 @@ public class InfoCommand(
             {
                 toolInteractiveService.WriteLine(availableProject.ProjectPath);
                 toolInteractiveService.WriteLine($"\tCurrent version {versionIncrementer.GetCurrentVersion(availableProject.Version)}");
-                toolInteractiveService.WriteLine($"\tNext version {versionIncrementer.GetNextVersion(availableProject.Version, nextVersion)}");
+                toolInteractiveService.WriteLine($"\tNext version {versionIncrementer.GetNextVersion(availableProject.Version)}");
             }
         }
     }
