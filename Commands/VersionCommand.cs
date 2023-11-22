@@ -6,7 +6,8 @@ using AutoVer.Services;
 namespace AutoVer.Commands;
 
 public class VersionCommand(
-    IProjectHandler projectHandler)
+    IProjectHandler projectHandler,
+    IGitHandler gitHandler)
 {
     public async Task ExecuteAsync(string? optionProjectPath, string? optionIncrementType, bool optionSkipVersionTagCheck)
     {
@@ -25,9 +26,24 @@ public class VersionCommand(
             }
         }
         
+        var gitRoot = gitHandler.FindGitRootDirectory(optionProjectPath);
+        
         foreach (var availableProject in availableProjects)
         {
             projectHandler.UpdateVersion(availableProject, incrementType);
+            gitHandler.StageChanges(gitRoot, availableProject.ProjectPath);
         }
+
+        var tags = gitHandler.GetTags(gitRoot);
+        var versionNumbers = tags
+            .Where(x => x.StartsWith("release_"))
+            .Select(x => x.Replace("release_", ""))
+            .Select(int.Parse)
+            .ToList();
+        var nextVersionNumber = versionNumbers.Any() ? versionNumbers.Max() + 1 : 1;
+        
+        gitHandler.CommitChanges(gitRoot, $"chore: Release {nextVersionNumber}");
+        
+        gitHandler.AddTag(gitRoot, $"release_{nextVersionNumber}");
     }
 }

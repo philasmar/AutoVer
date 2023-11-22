@@ -79,7 +79,7 @@ public class CommandFactory(
                 var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
                 var optionSkipVersionTagCheck = context.ParseResult.GetValueForOption(OptionSkipVersionTagCheck);
                 
-                var command = new VersionCommand(projectHandler);
+                var command = new VersionCommand(projectHandler, gitHandler);
                 await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck);
                     
                 context.ExitCode = CommandReturnCodes.Success;
