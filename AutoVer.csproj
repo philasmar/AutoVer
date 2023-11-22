@@ -14,7 +14,7 @@
         <PackageProjectUrl>https://github.com/philasmar/autover</PackageProjectUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
-        <Version>0.0.2</Version>
+        <Version>0.0.3</Version>
     </PropertyGroup>
 
     <ItemGroup>
