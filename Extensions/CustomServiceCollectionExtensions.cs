@@ -18,6 +18,8 @@ public static class CustomServiceCollectionExtensions
         serviceCollection.TryAdd(new ServiceDescriptor(typeof(IProjectHandler), typeof(ProjectHandler), lifetime));
         serviceCollection.TryAdd(new ServiceDescriptor(typeof(IVersionIncrementer), typeof(ThreePartVersionIncrementer), lifetime));
         serviceCollection.TryAdd(new ServiceDescriptor(typeof(IGitHandler), typeof(GitHandler), lifetime));
+        serviceCollection.TryAdd(new ServiceDescriptor(typeof(IPathManager), typeof(PathManager), lifetime));
+        serviceCollection.TryAdd(new ServiceDescriptor(typeof(IConfigurationManager), typeof(ConfigurationManager), lifetime));
         
         serviceCollection.AddSingleton<App>();
     }

@@ -4,4 +4,5 @@ public interface IFileManager
 {
     bool Exists(string path);
     Task<string> ReadAllTextAsync(string path);
+    Task<byte[]> ReadAllBytesAsync(string path);
 }

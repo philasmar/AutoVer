@@ -1,6 +1,6 @@
 namespace AutoVer.Models;
 
-public enum Increment
+public enum IncrementType
 {
     Patch,
     Minor,

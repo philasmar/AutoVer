@@ -7,31 +7,68 @@ namespace AutoVer.Commands;
 
 public class VersionCommand(
     IProjectHandler projectHandler,
-    IGitHandler gitHandler)
+    IGitHandler gitHandler,
+    IConfigurationManager configurationManager)
 {
     public async Task ExecuteAsync(string? optionProjectPath, string? optionIncrementType, bool optionSkipVersionTagCheck)
     {
-        if (!Enum.TryParse(optionIncrementType, out Increment incrementType))
+        var gitRoot = gitHandler.FindGitRootDirectory(optionProjectPath);
+        var userConfiguration = await configurationManager.LoadUserConfiguration(gitRoot);
+        
+        if (!Enum.TryParse(optionIncrementType, out IncrementType incrementType))
         {
-            incrementType = Increment.Patch;
+            incrementType = IncrementType.Patch;
         }
+        
         var availableProjects = await projectHandler.GetAvailableProjects(optionProjectPath);
+
+        if (userConfiguration?.Projects?.Any() ?? false)
+        {
+            foreach (var project in userConfiguration.Projects)
+            {
+                project.ProjectDefinition = availableProjects.FirstOrDefault(x => x.ProjectPath.Equals(project.Path.Replace('\\', Path.DirectorySeparatorChar)));
+                if (project.ProjectDefinition is null)
+                    throw new ConfiguredProjectNotFoundException($"The configured project '{project.Path}' does not exist in the specified path '{optionProjectPath}'.");
+            }
+        }
+        else
+        {
+            if (userConfiguration is null)
+                userConfiguration = new();
+
+            if (userConfiguration.Projects is null)
+                userConfiguration.Projects = [];
+            
+            foreach (var project in availableProjects)
+            {
+                userConfiguration.Projects.Add(new UserConfiguration.Project
+                {
+                    Path = project.ProjectPath,
+                    ProjectDefinition = project
+                });
+            }
+        }
 
         if (!optionSkipVersionTagCheck)
         {
-            foreach (var availableProject in availableProjects)
+            foreach (var availableProject in userConfiguration.Projects)
             {
-                if (!projectHandler.ProjectHasVersionTag(availableProject))
-                    throw new NoVersionTagException($"The project '{availableProject.ProjectPath}' does not have a {ProjectConstants.VersionTag} tag. Add a {ProjectConstants.VersionTag} tag and run the tool again.");
+                if (availableProject.ProjectDefinition is null)
+                    throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
+                
+                if (!projectHandler.ProjectHasVersionTag(availableProject.ProjectDefinition))
+                    throw new NoVersionTagException($"The project '{availableProject.Path}' does not have a {ProjectConstants.VersionTag} tag. Add a {ProjectConstants.VersionTag} tag and run the tool again.");
             }
         }
         
-        var gitRoot = gitHandler.FindGitRootDirectory(optionProjectPath);
         
-        foreach (var availableProject in availableProjects)
+        foreach (var availableProject in userConfiguration.Projects)
         {
-            projectHandler.UpdateVersion(availableProject, incrementType);
-            gitHandler.StageChanges(gitRoot, availableProject.ProjectPath);
+            if (availableProject.ProjectDefinition is null)
+                throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
+
+            projectHandler.UpdateVersion(availableProject.ProjectDefinition, incrementType);
+            gitHandler.StageChanges(gitRoot, availableProject.Path);
         }
 
         var tags = gitHandler.GetTags(gitRoot);

@@ -64,14 +64,14 @@ public class ProjectHandler(
         return projectDefinitions;
     }
 
-    public void UpdateVersion(ProjectDefinition projectDefinition, Increment increment)
+    public void UpdateVersion(ProjectDefinition projectDefinition, IncrementType incrementType)
     {
         var versionTagList = projectDefinition.Contents.GetElementsByTagName(ProjectConstants.VersionTag).Cast<XmlNode>().ToList();
         if (!versionTagList.Any())
             throw new NoVersionTagException($"The project '{projectDefinition.ProjectPath}' does not have a {ProjectConstants.VersionTag} tag. Add a {ProjectConstants.VersionTag} tag and run the tool again.");
 
         var versionTag = versionTagList.First();
-        var nextVersion = versionIncrementer.GetNextVersion(versionTag.InnerText, increment);
+        var nextVersion = versionIncrementer.GetNextVersion(versionTag.InnerText, incrementType);
         versionTag.InnerText = nextVersion.ToString();
         
         projectDefinition.Contents.Save(projectDefinition.ProjectPath);

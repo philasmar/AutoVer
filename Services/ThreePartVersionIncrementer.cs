@@ -11,7 +11,7 @@ public class ThreePartVersionIncrementer : IVersionIncrementer
         return ThreePartVersion.Parse(versionText);
     }
 
-    public ThreePartVersion GetNextVersion(string? versionText, Increment increment = Increment.Patch)
+    public ThreePartVersion GetNextVersion(string? versionText, IncrementType incrementType = IncrementType.Patch)
     {
         var currentVersion = GetCurrentVersion(versionText);
         
@@ -22,18 +22,18 @@ public class ThreePartVersionIncrementer : IVersionIncrementer
             Patch = currentVersion.Patch
         };
 
-        switch (increment)
+        switch (incrementType)
         {
-            case Increment.Major:
+            case IncrementType.Major:
                 nextVersion.Major += 1;
                 nextVersion.Minor = 0;
                 nextVersion.Patch = 0;
                 break;
-            case Increment.Minor:
+            case IncrementType.Minor:
                 nextVersion.Minor += 1;
                 nextVersion.Patch = 0;
                 break;
-            case Increment.Patch:
+            case IncrementType.Patch:
                 nextVersion.Patch += 1;
                 break;
         }

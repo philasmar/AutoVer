@@ -15,11 +15,12 @@ public class CommandFactory(
     IProjectHandler projectHandler,
     IToolInteractiveService toolInteractiveService,
     IVersionIncrementer versionIncrementer,
-    IGitHandler gitHandler
+    IGitHandler gitHandler,
+    IConfigurationManager configurationManager
     ) : ICommandFactory
 {
     private static readonly Option<string> OptionProjectPath = new("--project-path", Directory.GetCurrentDirectory, "Path to the project");
-    private static readonly Option<string> OptionIncrementType = new("--increment-type", Increment.Patch.ToString, "Increment type. Available values: Major, Minor, Patch.");
+    private static readonly Option<string> OptionIncrementType = new("--increment-type", IncrementType.Patch.ToString, "Increment type. Available values: Major, Minor, Patch.");
     private static readonly Option<bool> OptionSkipVersionTagCheck = new(new[] { "--skip-version-tag-check" }, $"Skip version tag check and increment projects even if some don't have a {ProjectConstants.VersionTag} tag.");
     private static readonly object RootCommandLock = new();
     private static readonly object ChildCommandLock = new();
@@ -79,7 +80,7 @@ public class CommandFactory(
                 var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
                 var optionSkipVersionTagCheck = context.ParseResult.GetValueForOption(OptionSkipVersionTagCheck);
                 
-                var command = new VersionCommand(projectHandler, gitHandler);
+                var command = new VersionCommand(projectHandler, gitHandler, configurationManager);
                 await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck);
                     
                 context.ExitCode = CommandReturnCodes.Success;
