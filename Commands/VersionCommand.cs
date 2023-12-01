@@ -12,8 +12,11 @@ public class VersionCommand(
 {
     public async Task ExecuteAsync(string? optionProjectPath, string? optionIncrementType, bool optionSkipVersionTagCheck)
     {
+        if (string.IsNullOrEmpty(optionProjectPath))
+            optionProjectPath = Directory.GetCurrentDirectory();
         var gitRoot = gitHandler.FindGitRootDirectory(optionProjectPath);
         var userConfiguration = await configurationManager.LoadUserConfiguration(gitRoot);
+        var persistUserConfiguration = false;
         
         if (!Enum.TryParse(optionIncrementType, out IncrementType incrementType))
         {
@@ -26,10 +29,12 @@ public class VersionCommand(
         {
             foreach (var project in userConfiguration.Projects)
             {
-                project.ProjectDefinition = availableProjects.FirstOrDefault(x => x.ProjectPath.Equals(project.Path.Replace('\\', Path.DirectorySeparatorChar)));
+                project.ProjectDefinition = availableProjects.FirstOrDefault(x => x.ProjectPath.Equals(Path.Combine(optionProjectPath, project.Path.Replace('\\', Path.DirectorySeparatorChar))));
                 if (project.ProjectDefinition is null)
                     throw new ConfiguredProjectNotFoundException($"The configured project '{project.Path}' does not exist in the specified path '{optionProjectPath}'.");
             }
+
+            persistUserConfiguration = true;
         }
         else
         {
@@ -44,7 +49,8 @@ public class VersionCommand(
                 userConfiguration.Projects.Add(new UserConfiguration.Project
                 {
                     Path = project.ProjectPath,
-                    ProjectDefinition = project
+                    ProjectDefinition = project,
+                    IncrementType = incrementType
                 });
             }
         }
@@ -67,7 +73,7 @@ public class VersionCommand(
             if (availableProject.ProjectDefinition is null)
                 throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
 
-            projectHandler.UpdateVersion(availableProject.ProjectDefinition, incrementType);
+            projectHandler.UpdateVersion(availableProject.ProjectDefinition, availableProject.IncrementType);
             gitHandler.StageChanges(gitRoot, availableProject.Path);
         }
 
@@ -82,5 +88,11 @@ public class VersionCommand(
         gitHandler.CommitChanges(gitRoot, $"chore: Release {nextVersionNumber}");
         
         gitHandler.AddTag(gitRoot, $"release_{nextVersionNumber}");
+        
+        // When done, reset the config file if the user had one
+        if (persistUserConfiguration)
+        {
+            await configurationManager.ResetUserConfiguration(gitRoot, userConfiguration);
+        }
     }
 }
