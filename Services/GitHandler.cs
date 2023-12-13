@@ -11,7 +11,7 @@ public class GitHandler(
     public string FindGitRootDirectory(string? currentPath)
     {
         if (string.IsNullOrEmpty(currentPath))
-            throw new InvalidProjectPathException($"The provided project path is empty or invalid.");
+            throw new InvalidProjectException($"The provided project path is empty or invalid.");
         
         if (fileManager.Exists(currentPath))
         {
@@ -19,7 +19,7 @@ public class GitHandler(
         }
         else if (!directoryManager.Exists(currentPath))
         {
-            throw new InvalidProjectPathException($"The path '{currentPath}' is not a valid project path.");
+            throw new InvalidProjectException($"The path '{currentPath}' is not a valid project path.");
         }
         
         while (currentPath != null)
@@ -69,5 +69,12 @@ public class GitHandler(
     {
         using var gitRepository = new Repository(gitRoot);
         return gitRepository.Tags.Select(x => x.FriendlyName).ToList();
+    }
+
+    public List<string> GetVersionCommits(string gitRoot, string lastVersion)
+    {
+        using var gitRepository = new Repository(gitRoot);
+        var commits = gitRepository.Commits.ToList();
+        return commits.Select(x => x.Message).ToList();
     }
 }

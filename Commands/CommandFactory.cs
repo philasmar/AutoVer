@@ -16,7 +16,8 @@ public class CommandFactory(
     IToolInteractiveService toolInteractiveService,
     IVersionIncrementer versionIncrementer,
     IGitHandler gitHandler,
-    IConfigurationManager configurationManager
+    IConfigurationManager configurationManager,
+    IChangelogHandler changelogHandler
     ) : ICommandFactory
 {
     private static readonly Option<string> OptionProjectPath = new("--project-path", Directory.GetCurrentDirectory, "Path to the project");
@@ -80,7 +81,7 @@ public class CommandFactory(
                 var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
                 var optionSkipVersionTagCheck = context.ParseResult.GetValueForOption(OptionSkipVersionTagCheck);
                 
-                var command = new VersionCommand(projectHandler, gitHandler, configurationManager);
+                var command = new VersionCommand(projectHandler, gitHandler, configurationManager, changelogHandler);
                 await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck);
                     
                 context.ExitCode = CommandReturnCodes.Success;

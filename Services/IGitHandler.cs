@@ -10,4 +10,5 @@ public interface IGitHandler
     void CommitChanges(string gitRoot, string commitMessage);
     void AddTag(string gitRoot, string tagName);
     List<string> GetTags(string gitRoot);
+    List<string> GetVersionCommits(string gitRoot, string lastVersion);
 }

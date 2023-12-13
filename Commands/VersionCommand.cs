@@ -8,7 +8,8 @@ namespace AutoVer.Commands;
 public class VersionCommand(
     IProjectHandler projectHandler,
     IGitHandler gitHandler,
-    IConfigurationManager configurationManager)
+    IConfigurationManager configurationManager,
+    IChangelogHandler changelogHandler)
 {
     public async Task ExecuteAsync(string? optionProjectPath, string? optionIncrementType, bool optionSkipVersionTagCheck)
     {
@@ -55,6 +56,8 @@ public class VersionCommand(
             }
         }
 
+        userConfiguration.GitRoot = gitRoot;
+
         if (!optionSkipVersionTagCheck)
         {
             foreach (var availableProject in userConfiguration.Projects)
@@ -67,27 +70,23 @@ public class VersionCommand(
             }
         }
         
-        
         foreach (var availableProject in userConfiguration.Projects)
         {
             if (availableProject.ProjectDefinition is null)
                 throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
-
+        
             projectHandler.UpdateVersion(availableProject.ProjectDefinition, availableProject.IncrementType);
             gitHandler.StageChanges(gitRoot, availableProject.Path);
         }
+        
+        var dateTimeNow = DateTime.UtcNow;
+        var nextVersionNumber = $"version_{dateTimeNow:yyyy-MM-dd.HH.mm.ss}";
+        
+        // var changelog = changelogHandler.GenerateChangelogAsMarkdown(userConfiguration, "1.0.0");
 
-        var tags = gitHandler.GetTags(gitRoot);
-        var versionNumbers = tags
-            .Where(x => x.StartsWith("release_"))
-            .Select(x => x.Replace("release_", ""))
-            .Select(int.Parse)
-            .ToList();
-        var nextVersionNumber = versionNumbers.Any() ? versionNumbers.Max() + 1 : 1;
+        gitHandler.CommitChanges(gitRoot, $"chore: Release {dateTimeNow:yyyy-MM-dd}");
         
-        gitHandler.CommitChanges(gitRoot, $"chore: Release {nextVersionNumber}");
-        
-        gitHandler.AddTag(gitRoot, $"release_{nextVersionNumber}");
+        gitHandler.AddTag(gitRoot, nextVersionNumber);
         
         // When done, reset the config file if the user had one
         if (persistUserConfiguration)
