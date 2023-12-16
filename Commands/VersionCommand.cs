@@ -81,13 +81,13 @@ public class VersionCommand(
         
         var dateTimeNow = DateTime.UtcNow;
         var nextVersionNumber = $"version_{dateTimeNow:yyyy-MM-dd.HH.mm.ss}";
-        
-        // var changelog = changelogHandler.GenerateChangelogAsMarkdown(userConfiguration, "1.0.0");
 
         gitHandler.CommitChanges(gitRoot, $"chore: Release {dateTimeNow:yyyy-MM-dd}");
         
         gitHandler.AddTag(gitRoot, nextVersionNumber);
         
+        var changelog = changelogHandler.GenerateChangelogAsMarkdown(userConfiguration, nextVersionNumber);
+        await changelogHandler.PersistChangelog(userConfiguration, changelog, null);
         // When done, reset the config file if the user had one
         if (persistUserConfiguration)
         {

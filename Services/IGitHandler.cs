@@ -1,3 +1,4 @@
+using AutoVer.Models;
 using LibGit2Sharp;
 
 namespace AutoVer.Services;
@@ -9,6 +10,6 @@ public interface IGitHandler
     void StageChanges(string gitRoot, string currentPath);
     void CommitChanges(string gitRoot, string commitMessage);
     void AddTag(string gitRoot, string tagName);
-    List<string> GetTags(string gitRoot);
-    List<string> GetVersionCommits(string gitRoot, string lastVersion);
+    List<string> GetTags(string? gitRoot);
+    List<ConventionalCommit> GetVersionCommits(string? gitRoot, string? lastVersionTag = null);
 }

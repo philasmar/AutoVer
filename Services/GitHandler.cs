@@ -1,4 +1,5 @@
 using AutoVer.Exceptions;
+using AutoVer.Models;
 using AutoVer.Services.IO;
 using LibGit2Sharp;
 
@@ -6,7 +7,8 @@ namespace AutoVer.Services;
 
 public class GitHandler(
     IDirectoryManager directoryManager,
-    IFileManager fileManager) : IGitHandler
+    IFileManager fileManager,
+    ICommitHandler commitHandler) : IGitHandler
 {
     public string FindGitRootDirectory(string? currentPath)
     {
@@ -65,16 +67,40 @@ public class GitHandler(
         gitRepository.ApplyTag(tagName);
     }
     
-    public List<string> GetTags(string gitRoot)
+    public List<string> GetTags(string? gitRoot)
     {
+        if (string.IsNullOrEmpty(gitRoot))
+            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
+        
         using var gitRepository = new Repository(gitRoot);
         return gitRepository.Tags.Select(x => x.FriendlyName).ToList();
     }
 
-    public List<string> GetVersionCommits(string gitRoot, string lastVersion)
+    public List<ConventionalCommit> GetVersionCommits(string? gitRoot, string? lastVersionTag = null)
     {
+        if (string.IsNullOrEmpty(gitRoot))
+            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
+
         using var gitRepository = new Repository(gitRoot);
-        var commits = gitRepository.Commits.ToList();
-        return commits.Select(x => x.Message).ToList();
+
+        var lastTag = !string.IsNullOrEmpty(lastVersionTag) ? 
+            gitRepository.Tags.First(x => x.FriendlyName.Equals(lastVersionTag)) :
+            null;
+
+        if (lastTag is not null)
+        {
+            var filter = new CommitFilter
+            {
+                ExcludeReachableFrom = lastTag
+            };
+
+            var commits = gitRepository.Commits.QueryBy(filter).ToList();
+            return commits.Select(commitHandler.Parse).Where(x => x != null).ToList()!;
+        }
+        else
+        {
+            var commits = gitRepository.Commits.ToList();
+            return commits.Select(commitHandler.Parse).Where(x => x != null).ToList()!;
+        }
     }
 }

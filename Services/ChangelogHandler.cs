@@ -1,33 +1,79 @@
+using System.Globalization;
 using System.Text;
 using AutoVer.Exceptions;
 using AutoVer.Models;
+using AutoVer.Services.IO;
 
 namespace AutoVer.Services;
 
 public class ChangelogHandler(
-    IGitHandler gitHandler) : IChangelogHandler
+    IGitHandler gitHandler,
+    IFileManager fileManager,
+    IPathManager pathManager) : IChangelogHandler
 {
+    private const string DefaultChangelogFileName = "CHANGELOG.md";
+
     public string GenerateChangelogAsMarkdown(UserConfiguration configuration, string nextVersion)
     {
+        var date = DateTime.ParseExact(
+            nextVersion.Replace("version_", ""), 
+            "yyyy-MM-dd.HH.mm.ss", 
+            CultureInfo.InvariantCulture);
         var changelog = new StringBuilder();
-        changelog.AppendLine($"## Release {nextVersion}");
+        changelog.AppendLine($"## Release {date:yyyy-MM-dd}");
         
         if (configuration.UseCommitsForChangelog)
         {
+            var tags = gitHandler.GetTags(configuration.GitRoot);
+            var versionNumbers = tags
+                .Where(x => x.StartsWith("version_"))
+                .Select(x => x.Replace("version_", ""))
+                .Select(x => DateTime.ParseExact(x, "yyyy-MM-dd.HH.mm.ss", CultureInfo.InvariantCulture))
+                .OrderDescending()
+                .ToList();
             
-            // var tags = gitHandler.GetTags(gitRoot);
-            // var versionNumbers = tags
-            //     .Where(x => x.StartsWith("v"))
-            //     .Select(x => x.Replace("release_", ""))
-            //     .Select(x =>
-            //     {
-            //         DateTime.TryParseExact(x, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None,
-            //             out var date);
-            //         return date;
-            //     })
-            //     .ToList();
-            // var nextVersionNumber = versionNumbers.Any() ? versionNumbers.Max() + 1 : 1;
-            var commits = gitHandler.GetVersionCommits(configuration.GitRoot, nextVersion);
+            var commits = new List<ConventionalCommit>();
+            if (versionNumbers.Count > 1)
+            {
+                var lastVersionDate = versionNumbers[1];
+                var lastVersionTag = $"version_{lastVersionDate:yyyy-MM-dd.HH.mm.ss}";
+                
+                commits = gitHandler.GetVersionCommits(configuration.GitRoot, lastVersionTag);
+            }
+            else
+            {
+                commits = gitHandler.GetVersionCommits(configuration.GitRoot);
+            }
+
+            changelog.AppendLine();
+            var commitTypes = 
+                commits
+                    .Select(x => x.Type)
+                    .Distinct()
+                    .Order()
+                    .ToList();
+            foreach (var type in commitTypes)
+            {
+                var typeCommits = 
+                    commits
+                        .Where(x => x.Type.Equals(type))
+                        .Distinct()
+                        .OrderBy(x => x.Scope)
+                        .ToList();
+                changelog.AppendLine($"### {type}");
+                foreach (var commit in typeCommits)
+                {
+                    if (string.IsNullOrEmpty(commit.Scope))
+                    {
+                        changelog.AppendLine($"* {commit.Description}");
+                    }
+                    else
+                    {
+                        changelog.AppendLine($"* **{commit.Scope}**:{commit.Description}");
+                    }
+                }
+            }
+            
         }
         else
         {
@@ -52,6 +98,27 @@ public class ChangelogHandler(
         }
 
         return changelog.ToString();
+    }
+
+    public async Task PersistChangelog(UserConfiguration configuration, string changelog, string? path)
+    {
+        if (string.IsNullOrEmpty(configuration.GitRoot))
+            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
+        
+        if (string.IsNullOrEmpty(path))
+        {
+            path = pathManager.Combine(configuration.GitRoot, DefaultChangelogFileName);
+        }
+        
+        if (fileManager.Exists(path))
+        {
+            var existingChangelog = await fileManager.ReadAllTextAsync(path);
+            await fileManager.WriteAllTextAsync(path, $"{changelog}\n{existingChangelog}");
+        }
+        else
+        {
+            await fileManager.WriteAllTextAsync(path, changelog);
+        }
     }
 
     private string GetProjectName(string projectPath)
