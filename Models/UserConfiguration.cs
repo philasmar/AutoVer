@@ -8,6 +8,8 @@ public class UserConfiguration
     public List<Project> Projects { get; set; } = [];
     
     public bool UseCommitsForChangelog { get; set; } = true;
+
+    public Dictionary<string, string>? ChangelogCategories { get; set; }
     
     public class Project
     {

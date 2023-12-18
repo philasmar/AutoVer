@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AutoVer.Exceptions;
 using AutoVer.Models;
 using AutoVer.Services.IO;
@@ -56,7 +57,8 @@ public class ConfigurationManager(
                 userConfiguration, 
                 new JsonSerializerOptions
                 {
-                    WriteIndented = true
+                    WriteIndented = true,
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
                 });
         }
         catch (Exception ex)

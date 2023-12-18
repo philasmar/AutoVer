@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using AutoVer.Constants;
 using AutoVer.Exceptions;
 using AutoVer.Models;
 using AutoVer.Services.IO;
@@ -11,8 +12,6 @@ public class ChangelogHandler(
     IFileManager fileManager,
     IPathManager pathManager) : IChangelogHandler
 {
-    private const string DefaultChangelogFileName = "CHANGELOG.md";
-
     public string GenerateChangelogAsMarkdown(UserConfiguration configuration, string nextVersion)
     {
         var date = DateTime.ParseExact(
@@ -60,7 +59,18 @@ public class ChangelogHandler(
                         .Distinct()
                         .OrderBy(x => x.Scope)
                         .ToList();
-                changelog.AppendLine($"### {type}");
+                if (configuration.ChangelogCategories != null &&
+                    configuration.ChangelogCategories.TryGetValue(type, out var typeLabel))
+                {
+                }
+                else if (ChangelogConstants.ChangelogCategories.TryGetValue(type, out typeLabel))
+                {
+                }
+                else
+                {
+                    typeLabel = type;
+                }
+                changelog.AppendLine($"### {typeLabel}");
                 foreach (var commit in typeCommits)
                 {
                     if (string.IsNullOrEmpty(commit.Scope))
@@ -69,7 +79,7 @@ public class ChangelogHandler(
                     }
                     else
                     {
-                        changelog.AppendLine($"* **{commit.Scope}**:{commit.Description}");
+                        changelog.AppendLine($"* **{commit.Scope}**: {commit.Description}");
                     }
                 }
             }
@@ -107,7 +117,7 @@ public class ChangelogHandler(
         
         if (string.IsNullOrEmpty(path))
         {
-            path = pathManager.Combine(configuration.GitRoot, DefaultChangelogFileName);
+            path = pathManager.Combine(configuration.GitRoot, ChangelogConstants.DefaultChangelogFileName);
         }
         
         if (fileManager.Exists(path))

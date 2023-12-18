@@ -23,7 +23,7 @@ public class ConventionalCommitHandler : ICommitHandler
             if (firstIndexOfParenthesis >= lastIndexOfParenthesis)
                 return null;
             scope = shortMessageParts[0]
-                .Substring(lastIndexOfParenthesis, lastIndexOfParenthesis - firstIndexOfParenthesis);
+                .Substring(firstIndexOfParenthesis + 1, lastIndexOfParenthesis - firstIndexOfParenthesis - 1);
             type = shortMessageParts[0].Substring(0, firstIndexOfParenthesis);
         }
         var description = commit.MessageShort.Remove(0, shortMessageParts[0].Length + 1).Trim();
