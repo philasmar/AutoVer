@@ -13,50 +13,12 @@ public class VersionCommand(
 {
     public async Task ExecuteAsync(string? optionProjectPath, string? optionIncrementType, bool optionSkipVersionTagCheck)
     {
-        if (string.IsNullOrEmpty(optionProjectPath))
-            optionProjectPath = Directory.GetCurrentDirectory();
-        var gitRoot = gitHandler.FindGitRootDirectory(optionProjectPath);
-        var userConfiguration = await configurationManager.LoadUserConfiguration(gitRoot);
-        var persistUserConfiguration = false;
-        
         if (!Enum.TryParse(optionIncrementType, out IncrementType incrementType))
         {
             incrementType = IncrementType.Patch;
         }
         
-        var availableProjects = await projectHandler.GetAvailableProjects(optionProjectPath);
-
-        if (userConfiguration?.Projects?.Any() ?? false)
-        {
-            foreach (var project in userConfiguration.Projects)
-            {
-                project.ProjectDefinition = availableProjects.FirstOrDefault(x => x.ProjectPath.Equals(Path.Combine(optionProjectPath, project.Path.Replace('\\', Path.DirectorySeparatorChar))));
-                if (project.ProjectDefinition is null)
-                    throw new ConfiguredProjectNotFoundException($"The configured project '{project.Path}' does not exist in the specified path '{optionProjectPath}'.");
-            }
-
-            persistUserConfiguration = true;
-        }
-        else
-        {
-            if (userConfiguration is null)
-                userConfiguration = new();
-
-            if (userConfiguration.Projects is null)
-                userConfiguration.Projects = [];
-            
-            foreach (var project in availableProjects)
-            {
-                userConfiguration.Projects.Add(new UserConfiguration.Project
-                {
-                    Path = project.ProjectPath,
-                    ProjectDefinition = project,
-                    IncrementType = incrementType
-                });
-            }
-        }
-
-        userConfiguration.GitRoot = gitRoot;
+        var userConfiguration = await configurationManager.RetrieveUserConfiguration(optionProjectPath, incrementType);
 
         if (!optionSkipVersionTagCheck)
         {
@@ -76,22 +38,23 @@ public class VersionCommand(
                 throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
         
             projectHandler.UpdateVersion(availableProject.ProjectDefinition, availableProject.IncrementType);
-            gitHandler.StageChanges(gitRoot, availableProject.Path);
+            gitHandler.StageChanges(userConfiguration, availableProject.Path);
         }
         
         var dateTimeNow = DateTime.UtcNow;
         var nextVersionNumber = $"version_{dateTimeNow:yyyy-MM-dd.HH.mm.ss}";
 
-        gitHandler.CommitChanges(gitRoot, $"chore: Release {dateTimeNow:yyyy-MM-dd}");
+        gitHandler.CommitChanges(userConfiguration, $"chore: Release {dateTimeNow:yyyy-MM-dd}");
         
-        gitHandler.AddTag(gitRoot, nextVersionNumber);
+        gitHandler.AddTag(userConfiguration, nextVersionNumber);
         
-        var changelog = changelogHandler.GenerateChangelogAsMarkdown(userConfiguration, nextVersionNumber);
-        await changelogHandler.PersistChangelog(userConfiguration, changelog, null);
         // When done, reset the config file if the user had one
-        if (persistUserConfiguration)
+        if (userConfiguration.PersistConfiguration)
         {
-            await configurationManager.ResetUserConfiguration(gitRoot, userConfiguration);
+            await configurationManager.ResetUserConfiguration(userConfiguration, new UserConfigurationResetRequest
+            {
+                IncrementType = true
+            });
         }
     }
 }

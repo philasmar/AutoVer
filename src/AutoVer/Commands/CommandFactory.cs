@@ -37,9 +37,10 @@ public class CommandFactory(
         
         lock(RootCommandLock)
         {
-            rootCommand.Add(BuildConfigureCommand());
+            // rootCommand.Add(BuildConfigureCommand());
             rootCommand.Add(BuildVersionCommand());
-            rootCommand.Add(BuildInfoCommand());
+            // rootCommand.Add(BuildInfoCommand());
+            rootCommand.Add(BuildChangelogCommand());
         }
 
         return rootCommand;
@@ -105,6 +106,51 @@ public class CommandFactory(
         });
 
         return versionCommand;
+    }
+
+    private Command BuildChangelogCommand()
+    {
+        var changelogCommand = new Command(
+            "changelog",
+            "Create a changelog for the versioned repository.");
+
+        lock (ChildCommandLock)
+        {
+            changelogCommand.Add(OptionProjectPath);
+            changelogCommand.Add(OptionIncrementType);
+        }
+
+        changelogCommand.SetHandler(async (context) =>
+        {
+            try
+            {
+                var optionProjectPath = context.ParseResult.GetValueForOption(OptionProjectPath);
+                var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
+                
+                var command = new ChangelogCommand(configurationManager, changelogHandler);
+                await command.ExecuteAsync(optionProjectPath, optionIncrementType);
+                    
+                context.ExitCode = CommandReturnCodes.Success;
+            }
+            catch (Exception e) when (e.IsExpectedException())
+            {
+                toolInteractiveService.WriteErrorLine(string.Empty);
+                toolInteractiveService.WriteErrorLine(e.Message);
+                    
+                context.ExitCode = CommandReturnCodes.UserError;
+            }
+            catch (Exception e)
+            {
+                // This is a bug
+                toolInteractiveService.WriteErrorLine(
+                    "Unhandled exception.\r\nThis is a bug.\r\nPlease copy the stack trace below and file a bug at https://github.com/philasmar/autover. " +
+                    e.PrettyPrint());
+                    
+                context.ExitCode = CommandReturnCodes.UnhandledException;
+            }
+        });
+
+        return changelogCommand;
     }
 
     private Command BuildInfoCommand()

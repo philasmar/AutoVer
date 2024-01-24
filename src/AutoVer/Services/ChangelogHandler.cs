@@ -12,36 +12,35 @@ public class ChangelogHandler(
     IFileManager fileManager,
     IPathManager pathManager) : IChangelogHandler
 {
-    public string GenerateChangelogAsMarkdown(UserConfiguration configuration, string nextVersion)
+    public string GenerateChangelogAsMarkdown(UserConfiguration configuration)
     {
-        var date = DateTime.ParseExact(
-            nextVersion.Replace("version_", ""), 
-            "yyyy-MM-dd.HH.mm.ss", 
-            CultureInfo.InvariantCulture);
+        var tags = gitHandler.GetTags(configuration);
+        var versionNumbers = tags
+            .Where(x => x.StartsWith("version_"))
+            .Select(x => x.Replace("version_", ""))
+            .Select(x => DateTime.ParseExact(x, "yyyy-MM-dd.HH.mm.ss", CultureInfo.InvariantCulture))
+            .OrderDescending()
+            .ToList();
+        if (versionNumbers.Count == 0)
+            throw new InvalidVersionTag($"The Git repository '{configuration.GitRoot}' does not have a valid version tag. Please run 'autover version' first.");
+        var currentVersionDate = versionNumbers[0];
+        
         var changelog = new StringBuilder();
-        changelog.AppendLine($"## Release {date:yyyy-MM-dd}");
+        changelog.AppendLine($"## Release {currentVersionDate:yyyy-MM-dd}");
         
         if (configuration.UseCommitsForChangelog)
         {
-            var tags = gitHandler.GetTags(configuration.GitRoot);
-            var versionNumbers = tags
-                .Where(x => x.StartsWith("version_"))
-                .Select(x => x.Replace("version_", ""))
-                .Select(x => DateTime.ParseExact(x, "yyyy-MM-dd.HH.mm.ss", CultureInfo.InvariantCulture))
-                .OrderDescending()
-                .ToList();
-            
             var commits = new List<ConventionalCommit>();
             if (versionNumbers.Count > 1)
             {
                 var lastVersionDate = versionNumbers[1];
                 var lastVersionTag = $"version_{lastVersionDate:yyyy-MM-dd.HH.mm.ss}";
                 
-                commits = gitHandler.GetVersionCommits(configuration.GitRoot, lastVersionTag);
+                commits = gitHandler.GetVersionCommits(configuration, lastVersionTag);
             }
             else
             {
-                commits = gitHandler.GetVersionCommits(configuration.GitRoot);
+                commits = gitHandler.GetVersionCommits(configuration);
             }
 
             changelog.AppendLine();

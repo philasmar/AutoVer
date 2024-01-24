@@ -5,6 +5,7 @@ namespace AutoVer.Models;
 public class UserConfiguration
 {
     internal string? GitRoot { get; set; }
+    internal bool PersistConfiguration { get; set; }
     public List<Project> Projects { get; set; } = [];
     
     public bool UseCommitsForChangelog { get; set; } = true;

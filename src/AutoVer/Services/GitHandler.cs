@@ -38,50 +38,43 @@ public class GitHandler(
         return string.Empty;
     }
 
-    public TagCollection GetGitTags(string currentPath)
+    public TagCollection GetGitTags(UserConfiguration userConfiguration, string currentPath)
     {
-        var gitRoot = FindGitRootDirectory(currentPath);
-        using var gitRepository = new Repository(gitRoot);
+        using var gitRepository = new Repository(userConfiguration.GitRoot);
         return gitRepository.Tags;
     }
 
-    public void StageChanges(string gitRoot, string currentPath)
+    public void StageChanges(UserConfiguration userConfiguration, string currentPath)
     {
-        using var gitRepository = new Repository(gitRoot);
+        using var gitRepository = new Repository(userConfiguration.GitRoot);
         
         LibGit2Sharp.Commands.Stage(gitRepository, currentPath);
     }
 
-    public void CommitChanges(string gitRoot, string commitMessage)
+    public void CommitChanges(UserConfiguration userConfiguration, string commitMessage)
     {
-        using var gitRepository = new Repository(gitRoot);
+        using var gitRepository = new Repository(userConfiguration.GitRoot);
 
         var versionTime = DateTimeOffset.Now;
         var signature = gitRepository.Config.BuildSignature(versionTime);
         gitRepository.Commit(commitMessage, signature, signature);
     }
 
-    public void AddTag(string gitRoot, string tagName)
+    public void AddTag(UserConfiguration userConfiguration, string tagName)
     {
-        using var gitRepository = new Repository(gitRoot);
+        using var gitRepository = new Repository(userConfiguration.GitRoot);
         gitRepository.ApplyTag(tagName);
     }
     
-    public List<string> GetTags(string? gitRoot)
+    public List<string> GetTags(UserConfiguration userConfiguration)
     {
-        if (string.IsNullOrEmpty(gitRoot))
-            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
-        
-        using var gitRepository = new Repository(gitRoot);
+        using var gitRepository = new Repository(userConfiguration.GitRoot);
         return gitRepository.Tags.Select(x => x.FriendlyName).ToList();
     }
 
-    public List<ConventionalCommit> GetVersionCommits(string? gitRoot, string? lastVersionTag = null)
+    public List<ConventionalCommit> GetVersionCommits(UserConfiguration userConfiguration, string? lastVersionTag = null)
     {
-        if (string.IsNullOrEmpty(gitRoot))
-            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
-
-        using var gitRepository = new Repository(gitRoot);
+        using var gitRepository = new Repository(userConfiguration.GitRoot);
 
         var lastTag = !string.IsNullOrEmpty(lastVersionTag) ? 
             gitRepository.Tags.First(x => x.FriendlyName.Equals(lastVersionTag)) :

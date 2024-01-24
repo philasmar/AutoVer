@@ -6,10 +6,10 @@ namespace AutoVer.Services;
 public interface IGitHandler
 {
     string FindGitRootDirectory(string? currentPath);
-    TagCollection GetGitTags(string currentPath);
-    void StageChanges(string gitRoot, string currentPath);
-    void CommitChanges(string gitRoot, string commitMessage);
-    void AddTag(string gitRoot, string tagName);
-    List<string> GetTags(string? gitRoot);
-    List<ConventionalCommit> GetVersionCommits(string? gitRoot, string? lastVersionTag = null);
+    TagCollection GetGitTags(UserConfiguration userConfiguration, string currentPath);
+    void StageChanges(UserConfiguration userConfiguration, string currentPath);
+    void CommitChanges(UserConfiguration userConfiguration, string commitMessage);
+    void AddTag(UserConfiguration userConfiguration, string tagName);
+    List<string> GetTags(UserConfiguration userConfiguration);
+    List<ConventionalCommit> GetVersionCommits(UserConfiguration userConfiguration, string? lastVersionTag = null);
 }
