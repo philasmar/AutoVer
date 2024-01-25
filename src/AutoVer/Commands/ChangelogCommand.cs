@@ -5,6 +5,7 @@ namespace AutoVer.Commands;
 
 public class ChangelogCommand(
     IConfigurationManager configurationManager,
+    IGitHandler gitHandler,
     IChangelogHandler changelogHandler)
 {
     public async Task ExecuteAsync(string? optionProjectPath, string? optionIncrementType)
@@ -26,6 +27,8 @@ public class ChangelogCommand(
             {
                 Changelog = true
             });
+            
+            gitHandler.CommitChanges(userConfiguration, $"Updated changelog");
         }
     }
 }

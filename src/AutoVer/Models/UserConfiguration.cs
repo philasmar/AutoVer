@@ -19,6 +19,8 @@ public class UserConfiguration
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public IncrementType IncrementType { get; set; } = IncrementType.Patch;
         
+        public string? PrereleaseLabel { get; set; }
+            
         public List<string> Changelog { get; set; } = [];
     
         internal ProjectDefinition? ProjectDefinition { get; set; }

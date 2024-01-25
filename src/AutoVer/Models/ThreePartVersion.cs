@@ -5,15 +5,25 @@ public class ThreePartVersion
     public required int Major { get; set; }
     public required int Minor { get; set; }
     public required int Patch { get; set; }
+    public string? PrereleaseLabel { get; set; }
 
     public override string ToString()
     {
-        return $"{Major}.{Minor}.{Patch}";
+        if (string.IsNullOrEmpty(PrereleaseLabel))
+        {
+            return $"{Major}.{Minor}.{Patch}";
+        }
+        else
+        {
+            return $"{Major}.{Minor}.{Patch}-{PrereleaseLabel}";
+        }
     }
 
     public static ThreePartVersion Parse(string? version)
     {
-        var versionParts = version?.Split(".");
+        var fullVersionParts = version?.Split("-");
+        var prereleaseLabel = (fullVersionParts?.Length == 2) ? fullVersionParts[1] : null;
+        var versionParts = fullVersionParts?[0].Split(".");
         if (versionParts?.Length != 3)
             throw new Exception("The provided version number is not a valid 3 part version.");
         
@@ -26,7 +36,8 @@ public class ThreePartVersion
         {
             Major = major,
             Minor = minor,
-            Patch = patch
+            Patch = patch,
+            PrereleaseLabel = prereleaseLabel
         };
     }
 }

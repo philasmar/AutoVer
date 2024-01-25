@@ -8,8 +8,7 @@ namespace AutoVer.Commands;
 public class VersionCommand(
     IProjectHandler projectHandler,
     IGitHandler gitHandler,
-    IConfigurationManager configurationManager,
-    IChangelogHandler changelogHandler)
+    IConfigurationManager configurationManager)
 {
     public async Task ExecuteAsync(string? optionProjectPath, string? optionIncrementType, bool optionSkipVersionTagCheck)
     {
@@ -37,17 +36,13 @@ public class VersionCommand(
             if (availableProject.ProjectDefinition is null)
                 throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
         
-            projectHandler.UpdateVersion(availableProject.ProjectDefinition, availableProject.IncrementType);
+            projectHandler.UpdateVersion(availableProject.ProjectDefinition, availableProject.IncrementType, availableProject.PrereleaseLabel);
             gitHandler.StageChanges(userConfiguration, availableProject.Path);
         }
         
         var dateTimeNow = DateTime.UtcNow;
         var nextVersionNumber = $"version_{dateTimeNow:yyyy-MM-dd.HH.mm.ss}";
 
-        gitHandler.CommitChanges(userConfiguration, $"chore: Release {dateTimeNow:yyyy-MM-dd}");
-        
-        gitHandler.AddTag(userConfiguration, nextVersionNumber);
-        
         // When done, reset the config file if the user had one
         if (userConfiguration.PersistConfiguration)
         {
@@ -56,5 +51,9 @@ public class VersionCommand(
                 IncrementType = true
             });
         }
+        
+        gitHandler.CommitChanges(userConfiguration, $"Release {dateTimeNow:yyyy-MM-dd}");
+        
+        gitHandler.AddTag(userConfiguration, nextVersionNumber);
     }
 }

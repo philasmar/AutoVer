@@ -98,17 +98,23 @@ public class ConfigurationManager(
                 if (resetRequest.IncrementType)
                     project.IncrementType = IncrementType.Patch;
             }
-            
-            await using var stream = new FileStream(configPath, FileMode.Create);
-            await using var sw = new StreamWriter(stream);
-            await JsonSerializer.SerializeAsync(
-                sw.BaseStream, 
-                userConfiguration, 
-                new JsonSerializerOptions
+
+            await using (var stream = new FileStream(configPath, FileMode.Create))
+            {
+                await using (var sw = new StreamWriter(stream))
                 {
-                    WriteIndented = true,
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-                });
+                    await JsonSerializer.SerializeAsync(
+                        sw.BaseStream, 
+                        userConfiguration, 
+                        new JsonSerializerOptions
+                        {
+                            WriteIndented = true,
+                            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                        });
+                }
+            };
+            
+            gitHandler.StageChanges(userConfiguration, configPath);
         }
         catch (Exception ex)
         {

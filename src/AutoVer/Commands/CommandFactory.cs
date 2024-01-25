@@ -14,7 +14,6 @@ public interface ICommandFactory
 public class CommandFactory(
     IProjectHandler projectHandler,
     IToolInteractiveService toolInteractiveService,
-    IVersionIncrementer versionIncrementer,
     IGitHandler gitHandler,
     IConfigurationManager configurationManager,
     IChangelogHandler changelogHandler
@@ -31,34 +30,17 @@ public class CommandFactory(
         // Name is important to set here to show correctly in the CLI usage help.
         var rootCommand = new RootCommand
         {
-            Name = "autover",
+            Name = "AutoVer",
             Description = "An automatic versioning tool for .NET"
         };
         
         lock(RootCommandLock)
         {
-            // rootCommand.Add(BuildConfigureCommand());
             rootCommand.Add(BuildVersionCommand());
-            // rootCommand.Add(BuildInfoCommand());
             rootCommand.Add(BuildChangelogCommand());
         }
 
         return rootCommand;
-    }
-
-    private Command BuildConfigureCommand()
-    {
-        var configureCommand = new Command(
-            "configure",
-            "Configure AutoVer to set versioning preferences.");
-        
-        configureCommand.SetHandler(async () =>
-        {
-            var command = new ConfigureCommand();
-            await command.ExecuteAsync();
-        });
-        
-        return configureCommand;
     }
 
     private Command BuildVersionCommand()
@@ -82,7 +64,7 @@ public class CommandFactory(
                 var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
                 var optionSkipVersionTagCheck = context.ParseResult.GetValueForOption(OptionSkipVersionTagCheck);
                 
-                var command = new VersionCommand(projectHandler, gitHandler, configurationManager, changelogHandler);
+                var command = new VersionCommand(projectHandler, gitHandler, configurationManager);
                 await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck);
                     
                 context.ExitCode = CommandReturnCodes.Success;
@@ -127,7 +109,7 @@ public class CommandFactory(
                 var optionProjectPath = context.ParseResult.GetValueForOption(OptionProjectPath);
                 var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
                 
-                var command = new ChangelogCommand(configurationManager, changelogHandler);
+                var command = new ChangelogCommand(configurationManager, gitHandler, changelogHandler);
                 await command.ExecuteAsync(optionProjectPath, optionIncrementType);
                     
                 context.ExitCode = CommandReturnCodes.Success;
@@ -151,30 +133,5 @@ public class CommandFactory(
         });
 
         return changelogCommand;
-    }
-
-    private Command BuildInfoCommand()
-    {
-        var infoCommand = new Command(
-            "info",
-            "Retrieve versioning information on the specified project(s).");
-        
-        lock (ChildCommandLock)
-        {
-            infoCommand.Add(OptionProjectPath);
-        }
-        
-        infoCommand.SetHandler((optionProjectPath) =>
-        {
-            var command = new InfoCommand(
-                projectHandler,
-                toolInteractiveService,
-                versionIncrementer,
-                gitHandler);
-            return command.ExecuteAsync(optionProjectPath);
-        }, 
-            OptionProjectPath);
-
-        return infoCommand;
     }
 }

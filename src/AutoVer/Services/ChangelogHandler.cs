@@ -128,6 +128,8 @@ public class ChangelogHandler(
         {
             await fileManager.WriteAllTextAsync(path, changelog);
         }
+        
+        gitHandler.StageChanges(configuration, path);
     }
 
     private string GetProjectName(string projectPath)
