@@ -5,10 +5,33 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
+  version-and-changelog:
+    name: Version and Changelog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET 8.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Install AutoVer
+        run: dotnet tool install -g AutoVer
+      - name: Setup Git User
+        run: |
+          git config --global user.email "github-user@email.com"
+          git config --global user.name "GitHub User"
+      - name: Increment Version
+        run: autover version
+      - name: Update Chagelog
+        run: autover changelog
+      - name: Push Changes
+        run: git push && git push origin --tags
   nuget-release:
-    name: NuGet Release
+    name: Package Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,3 +44,7 @@ jobs:
         run: dotnet build
       - name: Create NuGet Package
         run: dotnet pack
+      - name: Push to GitHub Registry
+        run: |
+          dotnet nuget add source --username philasmar --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/philasmar/index.json"
+          dotnet nuget push src/AutoVer/bin/Release/*.nupkg --api-key ${{ secrets.GITHUB_TOKEN }}  --source "github"
