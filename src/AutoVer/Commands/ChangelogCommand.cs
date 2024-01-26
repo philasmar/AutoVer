@@ -6,9 +6,10 @@ namespace AutoVer.Commands;
 public class ChangelogCommand(
     IConfigurationManager configurationManager,
     IGitHandler gitHandler,
-    IChangelogHandler changelogHandler)
+    IChangelogHandler changelogHandler,
+    IToolInteractiveService toolInteractiveService)
 {
-    public async Task ExecuteAsync(string? optionProjectPath, string? optionIncrementType)
+    public async Task ExecuteAsync(string? optionProjectPath, string? optionIncrementType, bool optionOutputToConsole)
     {
         if (!Enum.TryParse(optionIncrementType, out IncrementType incrementType))
         {
@@ -18,6 +19,12 @@ public class ChangelogCommand(
         var userConfiguration = await configurationManager.RetrieveUserConfiguration(optionProjectPath, incrementType);
         
         var changelog = changelogHandler.GenerateChangelogAsMarkdown(userConfiguration);
+        if (optionOutputToConsole)
+        {
+            toolInteractiveService.WriteLine(changelog);
+            return;
+        }
+        
         await changelogHandler.PersistChangelog(userConfiguration, changelog, null);
         
         // When done, reset the config file if the user had one

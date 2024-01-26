@@ -12,6 +12,8 @@
         <Product>AutoVer</Product>
         <RollForward>Major</RollForward>
         <PackageProjectUrl>https://github.com/philasmar/autover</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/philasmar/autover.git</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <Version>0.0.6</Version>
