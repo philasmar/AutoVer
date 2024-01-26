@@ -1,0 +1,23 @@
+name: Start Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  nuget-release:
+    name: NuGet Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET 8.0
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Build Solution
+        run: dotnet build
+      - name: Create NuGet Package
+        run: dotnet pack
