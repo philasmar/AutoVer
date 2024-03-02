@@ -30,7 +30,7 @@ public class ChangelogHandler(
         
         if (configuration.UseCommitsForChangelog)
         {
-            var commits = new List<ConventionalCommit>();
+            List<ConventionalCommit> commits;
             if (versionNumbers.Count > 1)
             {
                 var lastVersionDate = versionNumbers[1];

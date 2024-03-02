@@ -112,7 +112,7 @@ public class ConfigurationManager(
                             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
                         });
                 }
-            };
+            }
             
             gitHandler.StageChanges(userConfiguration, configPath);
         }

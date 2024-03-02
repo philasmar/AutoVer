@@ -10,7 +10,12 @@ public class VersionCommand(
     IGitHandler gitHandler,
     IConfigurationManager configurationManager)
 {
-    public async Task ExecuteAsync(string? optionProjectPath, string? optionIncrementType, bool optionSkipVersionTagCheck)
+    public async Task ExecuteAsync(
+        string? optionProjectPath, 
+        string? optionIncrementType, 
+        bool optionSkipVersionTagCheck, 
+        bool optionNoCommit, 
+        bool optionNoTag)
     {
         if (!Enum.TryParse(optionIncrementType, out IncrementType incrementType))
         {
@@ -51,9 +56,15 @@ public class VersionCommand(
                 IncrementType = true
             });
         }
-        
-        gitHandler.CommitChanges(userConfiguration, $"Release {dateTimeNow:yyyy-MM-dd}");
-        
-        gitHandler.AddTag(userConfiguration, nextVersionNumber);
+
+        if (!optionNoCommit)
+        {
+            gitHandler.CommitChanges(userConfiguration, $"Release {dateTimeNow:yyyy-MM-dd}");
+
+            if (!optionNoTag)
+            {
+                gitHandler.AddTag(userConfiguration, nextVersionNumber);
+            }
+        }
     }
 }
