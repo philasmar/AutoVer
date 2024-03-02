@@ -18,8 +18,12 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+      - name: Build Solution
+        run: dotnet build
+      - name: Create NuGet Package
+        run: dotnet pack
       - name: Install AutoVer
-        run: dotnet tool install -g AutoVer
+        run: dotnet tool install -g --add-source src/AutoVer/bin/Release autover
       - name: Setup Git User
         run: |
           git config --global user.email "github-user@email.com"
@@ -30,7 +34,7 @@ jobs:
         run: autover changelog
       - name: Push Changes
         run: git push && git push origin --tags
-  nuget-release:
+  package-release:
     needs: version-and-changelog
     name: Package Release
     runs-on: ubuntu-latest
@@ -47,6 +51,26 @@ jobs:
         run: dotnet build
       - name: Create NuGet Package
         run: dotnet pack
+      - name: Install AutoVer
+        run: dotnet tool install -g --add-source src/AutoVer/bin/Release autover
+      - name: Read Changelog Details
+        id: read-changelog-details
+        run: |
+          version=$(autover changelog --release-name)
+          changelog=$(autover changelog --output-to-console)
+          echo "VERSION=$version" >> $GITHUB_OUTPUT
+          echo "CHANGELOG=$changelog" >> $GITHUB_OUTPUT
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ steps.read-changelog-details.outputs.VERSION }}
+          body: ${{ steps.read-changelog-details.outputs.CHANGELOG }}
+          draft: false
+          prerelease: false
       - name: Push to GitHub Registry
         run: |
           dotnet nuget add source --username philasmar --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/philasmar/index.json"
