@@ -26,7 +26,8 @@ public class ChangelogHandler(
 
         var changelogEntry = new ChangelogEntry
         {
-            Title = $"Release {currentVersionDate:yyyy-MM-dd}"
+            Title = $"Release {currentVersionDate:yyyy-MM-dd}",
+            TagName = $"version_{currentVersionDate:yyyy-MM-dd.HH.mm.ss}"
         };
         
         if (configuration.UseCommitsForChangelog)

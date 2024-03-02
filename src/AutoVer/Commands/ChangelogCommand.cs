@@ -13,7 +13,8 @@ public class ChangelogCommand(
         string? optionProjectPath, 
         string? optionIncrementType, 
         bool optionOutputToConsole, 
-        bool optionReleaseName)
+        bool optionReleaseName,
+        bool optionTagName)
     {
         if (!Enum.TryParse(optionIncrementType, out IncrementType incrementType))
         {
@@ -26,6 +27,11 @@ public class ChangelogCommand(
         if (optionReleaseName)
         {
             toolInteractiveService.WriteLine(changelogEntry.Title);
+            return;
+        }
+        if (optionTagName)
+        {
+            toolInteractiveService.WriteLine(changelogEntry.TagName);
             return;
         }
         var changelog = changelogEntry.ToMarkdown();

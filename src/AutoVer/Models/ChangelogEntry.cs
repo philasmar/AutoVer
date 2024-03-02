@@ -5,6 +5,7 @@ namespace AutoVer.Models;
 public class ChangelogEntry
 {
     public required string Title { get; set; }
+    public required string TagName { get; set; }
     public List<ChangelogCategory> ChangelogCategories { get; set; } = [];
 
     public string ToMarkdown()
