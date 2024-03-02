@@ -9,7 +9,11 @@ public class ChangelogCommand(
     IChangelogHandler changelogHandler,
     IToolInteractiveService toolInteractiveService)
 {
-    public async Task ExecuteAsync(string? optionProjectPath, string? optionIncrementType, bool optionOutputToConsole)
+    public async Task ExecuteAsync(
+        string? optionProjectPath, 
+        string? optionIncrementType, 
+        bool optionOutputToConsole, 
+        bool optionReleaseName)
     {
         if (!Enum.TryParse(optionIncrementType, out IncrementType incrementType))
         {
@@ -18,7 +22,13 @@ public class ChangelogCommand(
         
         var userConfiguration = await configurationManager.RetrieveUserConfiguration(optionProjectPath, incrementType);
         
-        var changelog = changelogHandler.GenerateChangelogAsMarkdown(userConfiguration);
+        var changelogEntry = changelogHandler.GenerateChangelog(userConfiguration);
+        if (optionReleaseName)
+        {
+            toolInteractiveService.WriteLine(changelogEntry.Title);
+            return;
+        }
+        var changelog = changelogEntry.ToMarkdown();
         if (optionOutputToConsole)
         {
             toolInteractiveService.WriteLine(changelog);

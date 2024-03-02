@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using AutoVer.Constants;
 using AutoVer.Exceptions;
 using AutoVer.Models;
@@ -12,7 +11,7 @@ public class ChangelogHandler(
     IFileManager fileManager,
     IPathManager pathManager) : IChangelogHandler
 {
-    public string GenerateChangelogAsMarkdown(UserConfiguration configuration)
+    public ChangelogEntry GenerateChangelog(UserConfiguration configuration)
     {
         var tags = gitHandler.GetTags(configuration);
         var versionNumbers = tags
@@ -24,9 +23,11 @@ public class ChangelogHandler(
         if (versionNumbers.Count == 0)
             throw new InvalidVersionTag($"The Git repository '{configuration.GitRoot}' does not have a valid version tag. Please run 'autover version' first.");
         var currentVersionDate = versionNumbers[0];
-        
-        var changelog = new StringBuilder();
-        changelog.AppendLine($"## Release {currentVersionDate:yyyy-MM-dd}");
+
+        var changelogEntry = new ChangelogEntry
+        {
+            Title = $"Release {currentVersionDate:yyyy-MM-dd}"
+        };
         
         if (configuration.UseCommitsForChangelog)
         {
@@ -43,7 +44,6 @@ public class ChangelogHandler(
                 commits = gitHandler.GetVersionCommits(configuration);
             }
 
-            changelog.AppendLine();
             var commitTypes = 
                 commits
                     .Select(x => x.Type)
@@ -69,18 +69,23 @@ public class ChangelogHandler(
                 {
                     typeLabel = type;
                 }
-                changelog.AppendLine($"### {typeLabel}");
+
+                var changelogCategory = new ChangelogCategory
+                {
+                    Name = typeLabel
+                };
                 foreach (var commit in typeCommits)
                 {
                     if (string.IsNullOrEmpty(commit.Scope))
                     {
-                        changelog.AppendLine($"* {commit.Description}");
+                        changelogCategory.Changes.Add(new ChangelogChange { Description = commit.Description });
                     }
                     else
                     {
-                        changelog.AppendLine($"* **{commit.Scope}**: {commit.Description}");
+                        changelogCategory.Changes.Add(new ChangelogChange { Scope = commit.Scope, Description = commit.Description });
                     }
                 }
+                changelogEntry.ChangelogCategories.Add(changelogCategory);
             }
             
         }
@@ -95,18 +100,19 @@ public class ChangelogHandler(
                     continue;
                 
                 var projectName = GetProjectName(project.ProjectDefinition.ProjectPath);
-                changelog.AppendLine();
-                changelog.AppendLine($"### {projectName}");
-
-                changelog.AppendLine();
+                var changelogCategory = new ChangelogCategory
+                {
+                    Name = projectName
+                };
                 foreach (var entry in project.Changelog)
                 {
-                    changelog.AppendLine($"* {entry}");
+                    changelogCategory.Changes.Add(new ChangelogChange { Description = entry });
                 }
+                changelogEntry.ChangelogCategories.Add(changelogCategory);
             }
         }
 
-        return changelog.ToString();
+        return changelogEntry;
     }
 
     public async Task PersistChangelog(UserConfiguration configuration, string changelog, string? path)

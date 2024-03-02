@@ -104,12 +104,14 @@ public class CommandFactory(
             "Create a changelog for the versioned repository.");
     
         Option<bool> outputToConsoleOption = new(new[] { "--output-to-console" }, $"Output the changelog to the console.");
+        Option<bool> releaseNameOption = new(new[] { "--release-name" }, $"Gets the name of the current release.");
 
         lock (ChildCommandLock)
         {
             changelogCommand.Add(OptionProjectPath);
             changelogCommand.Add(OptionIncrementType);
             changelogCommand.Add(outputToConsoleOption);
+            changelogCommand.Add(releaseNameOption);
         }
 
         changelogCommand.SetHandler(async (context) =>
@@ -119,9 +121,10 @@ public class CommandFactory(
                 var optionProjectPath = context.ParseResult.GetValueForOption(OptionProjectPath);
                 var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
                 var optionOutputToConsole = context.ParseResult.GetValueForOption(outputToConsoleOption);
+                var optionReleaseName = context.ParseResult.GetValueForOption(releaseNameOption);
                 
                 var command = new ChangelogCommand(configurationManager, gitHandler, changelogHandler, toolInteractiveService);
-                await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionOutputToConsole);
+                await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionOutputToConsole, optionReleaseName);
                     
                 context.ExitCode = CommandReturnCodes.Success;
             }
