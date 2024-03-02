@@ -13,13 +13,13 @@ public class App(
     {
         Console.OutputEncoding = Encoding.UTF8;
 
-        toolInteractiveService.WriteLine("An automatic versioning tool for .NET");
-        toolInteractiveService.WriteLine("Project Home: https://github.com/philasmar/autover");
-        toolInteractiveService.WriteLine(string.Empty);
-
         // if user didn't specify a command, default to help
         if (args.Length == 0)
         {
+            toolInteractiveService.WriteLine("An automatic versioning tool for .NET");
+            toolInteractiveService.WriteLine("Project Home: https://github.com/philasmar/autover");
+            toolInteractiveService.WriteLine(string.Empty);
+            
             args = new[] { "-h" };
         }
 
