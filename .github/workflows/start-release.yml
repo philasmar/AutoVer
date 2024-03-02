@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: '0'
       - name: Setup .NET 8.0
         uses: actions/setup-dotnet@v4
         with:
@@ -43,6 +45,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
+          fetch-depth: '0'
       - name: Setup .NET 8.0
         uses: actions/setup-dotnet@v4
         with:
@@ -53,22 +56,36 @@ jobs:
         run: dotnet pack
       - name: Install AutoVer
         run: dotnet tool install -g --add-source src/AutoVer/bin/Release autover
-      - name: Read Changelog Details
-        id: read-changelog-details
+      - name: Setup Git User
+        run: |
+          git config --global user.email "github-user@email.com"
+          git config --global user.name "GitHub User"
+      - name: Read Release Name
+        id: read-release-name
         run: |
           version=$(autover changelog --release-name)
-          changelog=$(autover changelog --output-to-console)
           echo "VERSION=$version" >> $GITHUB_OUTPUT
-          echo "CHANGELOG=$changelog" >> $GITHUB_OUTPUT
+      - name: Read Tag Name
+        id: read-tag-name
+        run: |
+          tag=$(autover changelog --tag-name)
+          echo "TAG=$tag" >> $GITHUB_OUTPUT
+      - name: Read Changelog
+        id: read-changelog
+        run: |
+          changelog=$(autover changelog --output-to-console)
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo $changelog >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ steps.read-changelog-details.outputs.VERSION }}
-          body: ${{ steps.read-changelog-details.outputs.CHANGELOG }}
+          tag_name: ${{ steps.read-tag-name.outputs.TAG }}
+          release_name: ${{ steps.read-release-name.outputs.VERSION }}
+          body: ${{ steps.read-changelog.outputs.CHANGELOG }}
           draft: false
           prerelease: false
       - name: Push to GitHub Registry
