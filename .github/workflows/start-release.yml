@@ -74,9 +74,7 @@ jobs:
         id: read-changelog
         run: |
           changelog=$(autover changelog --output-to-console)
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          echo $changelog >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "CHANGELOG<<EOF"$'\n'"$changelog"$'\n'EOF >> "$GITHUB_OUTPUT"
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
