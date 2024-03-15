@@ -10,6 +10,7 @@ public interface IGitHandler
     void StageChanges(UserConfiguration userConfiguration, string currentPath);
     void CommitChanges(UserConfiguration userConfiguration, string commitMessage);
     void AddTag(UserConfiguration userConfiguration, string tagName);
-    List<string> GetTags(UserConfiguration userConfiguration);
+    List<string> GetTags(string gitRoot);
     List<ConventionalCommit> GetVersionCommits(UserConfiguration userConfiguration, string? lastVersionTag = null);
+    string GetFileByTag(string gitRoot, string tagName, string filePath);
 }

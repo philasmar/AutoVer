@@ -13,19 +13,34 @@ public class ConfigurationManager(
     IGitHandler gitHandler,
     IProjectHandler projectHandler) : IConfigurationManager
 {
-    private async Task<UserConfiguration?> LoadUserConfigurationFromRepository(string repositoryRoot)
+    private async Task<UserConfiguration?> LoadUserConfigurationFromRepository(string repositoryRoot, string? tagName = null)
     {
-        var configPath = pathManager.Combine(repositoryRoot, ConfigurationConstants.ConfigFolderName, ConfigurationConstants.ConfigFileName);
-        if (!fileManager.Exists(configPath))
-            return null;
-
+        var configPath = string.Empty;
+        
         try
         {
-            var content = await fileManager.ReadAllBytesAsync(configPath);
-            await using var stream = new MemoryStream(content);
-            var userConfiguration = await JsonSerializer.DeserializeAsync<UserConfiguration>(stream);
+            if (string.IsNullOrEmpty(tagName))
+            {
+                configPath = pathManager.Combine(repositoryRoot, ConfigurationConstants.ConfigFolderName, ConfigurationConstants.ConfigFileName);
+                if (!fileManager.Exists(configPath))
+                    return null;
+            
+                var content = await fileManager.ReadAllBytesAsync(configPath);
+                await using var stream = new MemoryStream(content);
+                var userConfiguration = await JsonSerializer.DeserializeAsync<UserConfiguration>(stream);
 
-            return userConfiguration;
+                return userConfiguration;
+            }
+            else
+            {
+                configPath = pathManager.Combine(ConfigurationConstants.ConfigFolderName, ConfigurationConstants.ConfigFileName);
+                if (!fileManager.Exists(pathManager.Combine(repositoryRoot, configPath)))
+                    return null;
+                var fileContent = gitHandler.GetFileByTag(repositoryRoot, tagName, configPath);
+                var userConfiguration =  JsonSerializer.Deserialize<UserConfiguration>(fileContent);
+                
+                return userConfiguration;
+            }
         }
         catch (Exception ex)
         {
@@ -35,12 +50,12 @@ public class ConfigurationManager(
         }
     }
 
-    public async Task<UserConfiguration> RetrieveUserConfiguration(string? projectPath, IncrementType incrementType)
+    public async Task<UserConfiguration> RetrieveUserConfiguration(string? projectPath, IncrementType incrementType, string? tagName = null)
     {
         if (string.IsNullOrEmpty(projectPath))
             projectPath = Directory.GetCurrentDirectory();
         var gitRoot = gitHandler.FindGitRootDirectory(projectPath);
-        var userConfiguration = await LoadUserConfigurationFromRepository(gitRoot);
+        var userConfiguration = await LoadUserConfigurationFromRepository(gitRoot, tagName);
         
         var availableProjects = await projectHandler.GetAvailableProjects(projectPath);
 

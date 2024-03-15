@@ -13,7 +13,10 @@ public class ChangelogHandler(
 {
     public ChangelogEntry GenerateChangelog(UserConfiguration configuration)
     {
-        var tags = gitHandler.GetTags(configuration);
+        if (string.IsNullOrEmpty(configuration.GitRoot))
+            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
+        
+        var tags = gitHandler.GetTags(configuration.GitRoot);
         var versionNumbers = tags
             .Where(x => x.StartsWith("version_"))
             .Select(x => x.Replace("version_", ""))
