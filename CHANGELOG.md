@@ -1,3 +1,8 @@
+## Release 2024-03-15
+
+### AutoVer (0.0.9)
+* Project version is now displayed in the generated changelog
+
 ## Release 2024-03-02
 
 ### Chores
