@@ -3,9 +3,7 @@
     {
       "Path": "src/AutoVer/AutoVer.csproj",
       "IncrementType": "Patch",
-      "Changelog": [
-        "Changelog command now uses the contents of last git tag instead of HEAD"
-      ]
+      "Changelog": []
     }
   ],
   "UseCommitsForChangelog": false

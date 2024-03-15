@@ -1,5 +1,10 @@
 ## Release 2024-03-15
 
+### AutoVer (0.0.10)
+* Changelog command now uses the contents of last git tag instead of HEAD
+
+## Release 2024-03-15
+
 ### AutoVer (0.0.9)
 * Project version is now displayed in the generated changelog
 
