@@ -103,7 +103,8 @@ public class ChangelogHandler(
                 var projectName = GetProjectName(project.ProjectDefinition.ProjectPath);
                 var changelogCategory = new ChangelogCategory
                 {
-                    Name = projectName
+                    Name = projectName,
+                    Version = project.ProjectDefinition?.Version
                 };
                 foreach (var entry in project.Changelog)
                 {

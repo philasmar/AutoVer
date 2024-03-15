@@ -15,7 +15,7 @@ public class ChangelogEntry
         changelog.AppendLine();
         foreach (var changelogCategory in ChangelogCategories)
         {
-            changelog.AppendLine($"### {changelogCategory.Name}");
+            changelog.AppendLine($"### {changelogCategory.Name}{(changelogCategory.Version != null ? $" ({changelogCategory.Version})" : "")}");
             foreach (var change in changelogCategory.Changes)
             {
                 if (string.IsNullOrEmpty(change.Scope))
@@ -36,6 +36,7 @@ public class ChangelogEntry
 public class ChangelogCategory
 {
     public required string Name { get; set; }
+    public string? Version { get; set; }
     public List<ChangelogChange> Changes { get; set; } = [];
 }
 

@@ -3,8 +3,10 @@
     {
       "Path": "src/AutoVer/AutoVer.csproj",
       "IncrementType": "Patch",
-      "Changelog": []
+      "Changelog": [
+        "Project version is now displayed in the generated changelog"
+      ]
     }
   ],
-  "UseCommitsForChangelog": true
+  "UseCommitsForChangelog": false
 }
