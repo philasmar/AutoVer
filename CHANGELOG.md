@@ -1,5 +1,11 @@
 ## Release 2024-03-18
 
+### AutoVer (0.0.12)
+* Fix issue causing change files to not be deleted and staged after running 'autover changelog'
+* Fix issue causing 'autover changlog --release-name' to fail
+
+## Release 2024-03-18
+
 ### AutoVer (0.0.11)
 * Add change files to control generated changelog file
 * Changelog command now uses the contents of last git tag instead of HEAD
