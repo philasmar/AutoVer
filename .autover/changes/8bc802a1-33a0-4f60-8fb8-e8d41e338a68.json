@@ -1,0 +1,10 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "ChangelogMessages": [
+        "Fix issue causing \u0027autover changlog --release-name\u0027 to fail"
+      ]
+    }
+  ]
+}

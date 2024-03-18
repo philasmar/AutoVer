@@ -51,7 +51,9 @@ public class ChangeFileHandler(
     public async Task<IList<ChangeFile>> LoadChangeFilesFromRepository(string repositoryRoot)
     {
         var changeFilesPath = pathManager.Combine(repositoryRoot, ConfigurationConstants.ConfigFolderName, ConfigurationConstants.ChangesFolderName);
-        
+
+        if (!directoryManager.Exists(changeFilesPath))
+            directoryManager.CreateDirectory(changeFilesPath);
         var changeFilePaths = directoryManager.GetFiles(changeFilesPath, "*.json").ToList();
 
         var changeFiles = new List<ChangeFile>();
