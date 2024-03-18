@@ -11,7 +11,8 @@ public class ConfigurationManager(
     IFileManager fileManager,
     IPathManager pathManager,
     IGitHandler gitHandler,
-    IProjectHandler projectHandler) : IConfigurationManager
+    IProjectHandler projectHandler,
+    IChangeFileHandler changeFileHandler) : IConfigurationManager
 {
     private async Task<UserConfiguration?> LoadUserConfigurationFromRepository(string repositoryRoot, string? tagName = null)
     {
@@ -82,6 +83,7 @@ public class ConfigurationManager(
             {
                 userConfiguration.Projects.Add(new UserConfiguration.Project
                 {
+                    Name = GetProjectName(project.ProjectPath),
                     Path = project.ProjectPath,
                     ProjectDefinition = project,
                     IncrementType = incrementType
@@ -108,7 +110,7 @@ public class ConfigurationManager(
             foreach (var project in userConfiguration.Projects)
             {
                 if (resetRequest.Changelog)
-                    project.Changelog = [];
+                    changeFileHandler.ResetChangeFiles(userConfiguration);
                 
                 if (resetRequest.IncrementType)
                     project.IncrementType = IncrementType.Patch;
@@ -137,5 +139,17 @@ public class ConfigurationManager(
                 $"Unable to reset the configuration file '{configPath}'.",
                 ex);
         }
+    }
+
+    private string GetProjectName(string projectPath)
+    {
+        var projectParts = projectPath.Split(Path.DirectorySeparatorChar);
+        if (projectParts.Length == 0)
+            throw new InvalidProjectException($"The project '{projectPath}' is invalid.");
+        var projectFileName = projectParts.Last();
+        var projectFileNameParts = projectFileName.Split('.');
+        if (projectFileNameParts.Length != 2)
+            throw new InvalidProjectException($"The project '{projectPath}' is invalid.");
+        return projectFileNameParts.First();
     }
 }

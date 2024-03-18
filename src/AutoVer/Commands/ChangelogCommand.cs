@@ -42,7 +42,7 @@ public class ChangelogCommand(
         
         var userConfiguration = await configurationManager.RetrieveUserConfiguration(optionProjectPath, incrementType, tagName);
         
-        var changelogEntry = changelogHandler.GenerateChangelog(userConfiguration);
+        var changelogEntry = await changelogHandler.GenerateChangelog(userConfiguration);
         if (optionReleaseName)
         {
             toolInteractiveService.WriteLine(changelogEntry.Title);

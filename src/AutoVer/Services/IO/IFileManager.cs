@@ -7,4 +7,5 @@ public interface IFileManager
     Task<byte[]> ReadAllBytesAsync(string path);
     Task AppendAllTextAsync(string path, string? contents);
     Task WriteAllTextAsync(string path, string? contents);
+    void Delete(string path);
 }

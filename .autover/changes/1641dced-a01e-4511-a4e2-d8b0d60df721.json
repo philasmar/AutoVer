@@ -1,0 +1,10 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "ChangelogMessages": [
+        "Add change files to control generated changelog file"
+      ]
+    }
+  ]
+}

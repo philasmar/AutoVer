@@ -9,9 +9,10 @@ namespace AutoVer.Services;
 public class ChangelogHandler(
     IGitHandler gitHandler,
     IFileManager fileManager,
-    IPathManager pathManager) : IChangelogHandler
+    IPathManager pathManager,
+    IChangeFileHandler changeFileHandler) : IChangelogHandler
 {
-    public ChangelogEntry GenerateChangelog(UserConfiguration configuration)
+    public async Task<ChangelogEntry> GenerateChangelog(UserConfiguration configuration)
     {
         if (string.IsNullOrEmpty(configuration.GitRoot))
             throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
@@ -95,25 +96,52 @@ public class ChangelogHandler(
         }
         else
         {
+            var configuredProjects = new HashSet<string>();
             foreach (var project in configuration.Projects)
             {
-                if (project.ProjectDefinition is null)
-                    throw new InvalidProjectException($"The project '{project.Path}' is invalid.");
-                
-                if (project.Changelog.Count == 0)
-                    continue;
-                
-                var projectName = GetProjectName(project.ProjectDefinition.ProjectPath);
-                var changelogCategory = new ChangelogCategory
+                configuredProjects.Add(project.Name);
+            }
+            
+            var changeFiles = await changeFileHandler.LoadChangeFilesFromRepository(configuration.GitRoot);
+            foreach (var changeFile in changeFiles)
+            {
+                changeFile.Projects.RemoveAll(x => !configuredProjects.Contains(x.Name));
+            }
+
+            var changelogCategories = new Dictionary<string, ChangelogCategory>();
+            foreach (var changeFile in changeFiles)
+            {
+                foreach (var project in changeFile.Projects)
                 {
-                    Name = projectName,
-                    Version = project.ProjectDefinition?.Version
-                };
-                foreach (var entry in project.Changelog)
-                {
-                    changelogCategory.Changes.Add(new ChangelogChange { Description = entry });
+                    if (changelogCategories.TryGetValue(project.Name, out var category))
+                    {
+                        foreach (var changelogMessage in project.ChangelogMessages)
+                        {
+                            category.Changes.Add(new ChangelogChange { Description = changelogMessage });
+                        }
+                    }
+                    else
+                    {
+                        if (project.ChangelogMessages.Count == 0)
+                            continue;
+                        
+                        var configuredProject = configuration.Projects.First(x => x.Name.Equals(project.Name));
+                        if (configuredProject.ProjectDefinition is null)
+                            throw new InvalidProjectException($"The project '{configuredProject.Path}' is invalid.");
+                        
+                        var changelogCategory = new ChangelogCategory
+                        {
+                            Name = configuredProject.Name,
+                            Version = configuredProject.ProjectDefinition?.Version
+                        };
+                        foreach (var changelogMessage in project.ChangelogMessages)
+                        {
+                            changelogCategory.Changes.Add(new ChangelogChange { Description = changelogMessage });
+                        }
+                        changelogEntry.ChangelogCategories.Add(changelogCategory);
+                        changelogCategories.Add(configuredProject.Name, changelogCategory);
+                    }
                 }
-                changelogEntry.ChangelogCategories.Add(changelogCategory);
             }
         }
 

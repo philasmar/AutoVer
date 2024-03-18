@@ -16,7 +16,8 @@ public class CommandFactory(
     IToolInteractiveService toolInteractiveService,
     IGitHandler gitHandler,
     IConfigurationManager configurationManager,
-    IChangelogHandler changelogHandler
+    IChangelogHandler changelogHandler,
+    IChangeFileHandler changeFileHandler
     ) : ICommandFactory
 {
     private static readonly Option<string> OptionProjectPath = new("--project-path", Directory.GetCurrentDirectory, "Path to the project");
@@ -37,6 +38,7 @@ public class CommandFactory(
         {
             rootCommand.Add(BuildVersionCommand());
             rootCommand.Add(BuildChangelogCommand());
+            rootCommand.Add(BuildChangeCommand());
         }
 
         return rootCommand;
@@ -150,5 +152,52 @@ public class CommandFactory(
         });
 
         return changelogCommand;
+    }
+
+    private Command BuildChangeCommand()
+    {
+        var changeCommand = new Command(
+            "change",
+            "Create a change file that contains information on the current changes.");
+        
+        Option<string> messageOption = new(["-m", "--message"], "The change message for a given project.");
+        
+        lock (ChildCommandLock)
+        {
+            changeCommand.Add(messageOption);
+        }
+        
+        changeCommand.SetHandler(async (context) =>
+        {
+            try
+            {
+                var optionProjectPath = context.ParseResult.GetValueForOption(OptionProjectPath);
+                var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
+                var optionMessage = context.ParseResult.GetValueForOption(messageOption);
+                
+                var command = new ChangeCommand(configurationManager, toolInteractiveService, changeFileHandler);
+                await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionMessage);
+                    
+                context.ExitCode = CommandReturnCodes.Success;
+            }
+            catch (Exception e) when (e.IsExpectedException())
+            {
+                toolInteractiveService.WriteErrorLine(string.Empty);
+                toolInteractiveService.WriteErrorLine(e.Message);
+                    
+                context.ExitCode = CommandReturnCodes.UserError;
+            }
+            catch (Exception e)
+            {
+                // This is a bug
+                toolInteractiveService.WriteErrorLine(
+                    "Unhandled exception.\r\nThis is a bug.\r\nPlease copy the stack trace below and file a bug at https://github.com/philasmar/autover. " +
+                    e.PrettyPrint());
+                    
+                context.ExitCode = CommandReturnCodes.UnhandledException;
+            }
+        });
+
+        return changeCommand;
     }
 }

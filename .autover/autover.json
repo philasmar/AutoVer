@@ -1,9 +1,9 @@
 {
   "Projects": [
     {
+      "Name": "AutoVer",
       "Path": "src/AutoVer/AutoVer.csproj",
-      "IncrementType": "Patch",
-      "Changelog": []
+      "IncrementType": "Patch"
     }
   ],
   "UseCommitsForChangelog": false

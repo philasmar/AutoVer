@@ -22,6 +22,7 @@ public static class CustomServiceCollectionExtensions
         serviceCollection.TryAdd(new ServiceDescriptor(typeof(IConfigurationManager), typeof(ConfigurationManager), lifetime));
         serviceCollection.TryAdd(new ServiceDescriptor(typeof(IChangelogHandler), typeof(ChangelogHandler), lifetime));
         serviceCollection.TryAdd(new ServiceDescriptor(typeof(ICommitHandler), typeof(ConventionalCommitHandler), lifetime));
+        serviceCollection.TryAdd(new ServiceDescriptor(typeof(IChangeFileHandler), typeof(ChangeFileHandler), lifetime));
         
         serviceCollection.AddSingleton<App>();
     }
