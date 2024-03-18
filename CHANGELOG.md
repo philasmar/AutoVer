@@ -1,3 +1,9 @@
+## Release 2024-03-18
+
+### AutoVer (0.0.11)
+* Add change files to control generated changelog file
+* Changelog command now uses the contents of last git tag instead of HEAD
+
 ## Release 2024-03-15
 
 ### AutoVer (0.0.10)
