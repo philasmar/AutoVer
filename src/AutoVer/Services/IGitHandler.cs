@@ -13,4 +13,5 @@ public interface IGitHandler
     List<string> GetTags(string gitRoot);
     List<ConventionalCommit> GetVersionCommits(UserConfiguration userConfiguration, string? lastVersionTag = null);
     string GetFileByTag(string gitRoot, string tagName, string filePath);
+    List<GitFile> GetFolderByTag(string gitRoot, string tagName, string folderPath);
 }

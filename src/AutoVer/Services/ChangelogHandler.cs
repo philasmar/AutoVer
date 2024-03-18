@@ -102,7 +102,7 @@ public class ChangelogHandler(
                 configuredProjects.Add(project.Name);
             }
             
-            var changeFiles = await changeFileHandler.LoadChangeFilesFromRepository(configuration.GitRoot);
+            var changeFiles = await changeFileHandler.LoadChangeFilesFromRepository(configuration.GitRoot, changelogEntry.TagName);
             foreach (var changeFile in changeFiles)
             {
                 changeFile.Projects.RemoveAll(x => !configuredProjects.Contains(x.Name));

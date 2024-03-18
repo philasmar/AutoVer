@@ -1,0 +1,10 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "ChangelogMessages": [
+        "ChangeFileHandler now uses last git tag instead of HEAD"
+      ]
+    }
+  ]
+}

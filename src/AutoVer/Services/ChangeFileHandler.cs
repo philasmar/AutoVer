@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using AutoVer.Constants;
 using AutoVer.Exceptions;
@@ -48,28 +49,29 @@ public class ChangeFileHandler(
             }));
     }
 
-    public async Task<IList<ChangeFile>> LoadChangeFilesFromRepository(string repositoryRoot)
+    public async Task<IList<ChangeFile>> LoadChangeFilesFromRepository(string repositoryRoot, string tagName)
     {
-        var changeFilesPath = pathManager.Combine(repositoryRoot, ConfigurationConstants.ConfigFolderName, ConfigurationConstants.ChangesFolderName);
+        var changeFilesPath = pathManager.Combine(ConfigurationConstants.ConfigFolderName, ConfigurationConstants.ChangesFolderName);
+        var absoluteChangeFilesPath = pathManager.Combine(repositoryRoot, changeFilesPath);
 
-        if (!directoryManager.Exists(changeFilesPath))
-            directoryManager.CreateDirectory(changeFilesPath);
-        var changeFilePaths = directoryManager.GetFiles(changeFilesPath, "*.json").ToList();
+        if (!directoryManager.Exists(absoluteChangeFilesPath))
+            directoryManager.CreateDirectory(absoluteChangeFilesPath);
+        var gitFiles = gitHandler.GetFolderByTag(repositoryRoot, tagName, changeFilesPath);
 
         var changeFiles = new List<ChangeFile>();
         
-        foreach (var changeFilePath in changeFilePaths)
+        foreach (var gitFile in gitFiles)
         {
             try
             {
-                var content = await fileManager.ReadAllTextAsync(changeFilePath);
-                var changeFile = JsonSerializer.Deserialize<ChangeFile>(content);
+                await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(gitFile.Content));
+                var changeFile = await JsonSerializer.DeserializeAsync<ChangeFile>(stream);
                 if (changeFile != null)
                     changeFiles.Add(changeFile);
             }
             catch (Exception)
             {
-                toolInteractiveService.WriteErrorLine($"Unable to deserialize the change file '{changeFilePath}'.");
+                toolInteractiveService.WriteErrorLine($"Unable to deserialize the change file '{gitFile.Path}'.");
             }
         }
 

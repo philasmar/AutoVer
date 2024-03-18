@@ -8,7 +8,7 @@ public interface IChangeFileHandler
 
     Task PersistChangeFile(UserConfiguration configuration, ChangeFile changeFile);
 
-    Task<IList<ChangeFile>> LoadChangeFilesFromRepository(string repositoryRoot);
+    Task<IList<ChangeFile>> LoadChangeFilesFromRepository(string repositoryRoot, string tagName);
 
     void ResetChangeFiles(UserConfiguration userConfiguration);
 }

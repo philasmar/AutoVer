@@ -120,4 +120,43 @@ public class GitHandler(
         Blob blob = (Blob) entry.Target;
         return blob.GetContentText();
     }
+    
+    public List<GitFile> GetFolderByTag(string gitRoot, string tagName, string folderPath)
+    {
+        using var gitRepository = new Repository(gitRoot);
+        var tag = gitRepository.Tags.First(x => x.FriendlyName.Equals(tagName));
+        var commit = gitRepository.Lookup<Commit>(tag.Target.Sha);
+        string[] paths = folderPath.Split('/');
+        string fullPath = paths[0];
+        Tree tree = commit.Tree;
+        TreeEntry entry = tree.First(x => x.Path == fullPath);
+        if(entry.TargetType == TreeEntryTargetType.Tree)
+        {
+            foreach(string pathPart in paths.Skip(1).ToArray())
+            {
+                if(entry.TargetType == TreeEntryTargetType.Tree)
+                    tree = (Tree)entry.Target;
+
+                fullPath += "/" + pathPart;
+                entry = tree.First(x => x.Path == fullPath);
+            }
+        }
+
+        var files = new List<GitFile>();
+
+        if (entry.TargetType == TreeEntryTargetType.Tree)
+        {
+            foreach (var target in (Tree) entry.Target)
+            {
+                if (target.TargetType == TreeEntryTargetType.Tree)
+                    continue;
+                
+                Blob blob = (Blob) target.Target;
+                var content = blob.GetContentText();
+                files.Add(new GitFile(target.Path, content));
+            }
+        }
+        
+        return files;
+    }
 }
