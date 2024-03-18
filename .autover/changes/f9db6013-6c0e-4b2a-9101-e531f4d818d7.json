@@ -1,0 +1,10 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "ChangelogMessages": [
+        "Fix issue causing change files to not be deleted and staged after running \u0027autover changelog\u0027"
+      ]
+    }
+  ]
+}

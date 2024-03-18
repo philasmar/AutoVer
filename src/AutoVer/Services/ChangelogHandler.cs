@@ -170,16 +170,4 @@ public class ChangelogHandler(
         
         gitHandler.StageChanges(configuration, path);
     }
-
-    private string GetProjectName(string projectPath)
-    {
-        var projectParts = projectPath.Split(Path.DirectorySeparatorChar);
-        if (projectParts.Length == 0)
-            throw new InvalidProjectException($"The project '{projectPath}' is invalid.");
-        var projectFileName = projectParts.Last();
-        var projectFileNameParts = projectFileName.Split('.');
-        if (projectFileNameParts.Length != 2)
-            throw new InvalidProjectException($"The project '{projectPath}' is invalid.");
-        return projectFileNameParts.First();
-    }
 }

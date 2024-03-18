@@ -10,7 +10,8 @@ public class ChangeFileHandler(
     IPathManager pathManager,
     IDirectoryManager directoryManager,
     IFileManager fileManager,
-    IToolInteractiveService toolInteractiveService) : IChangeFileHandler
+    IToolInteractiveService toolInteractiveService,
+    IGitHandler gitHandler) : IChangeFileHandler
 {
     public ChangeFile GenerateChangeFile(UserConfiguration configuration, string? changeMessage)
     {
@@ -95,5 +96,7 @@ public class ChangeFileHandler(
                 toolInteractiveService.WriteErrorLine($"Unable to delete the change file '{changeFilePath}'.");
             }
         }
+            
+        gitHandler.StageChanges(userConfiguration, changeFolderPath);
     }
 }
