@@ -1,5 +1,10 @@
 ## Release 2024-03-18
 
+### AutoVer (0.0.13)
+* ChangeFileHandler now uses last git tag instead of HEAD
+
+## Release 2024-03-18
+
 ### AutoVer (0.0.12)
 * Fix issue causing change files to not be deleted and staged after running 'autover changelog'
 * Fix issue causing 'autover changlog --release-name' to fail
