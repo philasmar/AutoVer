@@ -1,3 +1,8 @@
+## Release 2024-03-20
+
+### AutoVer (0.0.14)
+* Change command now supports repositories with multiple projects
+
 ## Release 2024-03-18
 
 ### AutoVer (0.0.13)
