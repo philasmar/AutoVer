@@ -1,0 +1,10 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "ChangelogMessages": [
+        "Add icon to the AutoVer NuGet package"
+      ]
+    }
+  ]
+}

@@ -7,9 +7,10 @@ public class UserConfiguration
     internal string? GitRoot { get; set; }
     internal bool PersistConfiguration { get; set; }
     public List<Project> Projects { get; set; } = [];
-    
     public bool UseCommitsForChangelog { get; set; } = true;
-
+        
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public IncrementType DefaultIncrementType { get; set; } = IncrementType.Patch;
     public Dictionary<string, string>? ChangelogCategories { get; set; }
     
     public class Project

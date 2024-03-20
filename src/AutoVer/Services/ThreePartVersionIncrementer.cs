@@ -37,6 +37,8 @@ public class ThreePartVersionIncrementer : IVersionIncrementer
             case IncrementType.Patch:
                 nextVersion.Patch += 1;
                 break;
+            case IncrementType.None:
+                break;
         }
 
         return nextVersion;

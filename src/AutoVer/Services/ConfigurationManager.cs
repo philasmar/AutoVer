@@ -113,7 +113,7 @@ public class ConfigurationManager(
                     changeFileHandler.ResetChangeFiles(userConfiguration);
                 
                 if (resetRequest.IncrementType)
-                    project.IncrementType = IncrementType.Patch;
+                    project.IncrementType = userConfiguration.DefaultIncrementType;
             }
 
             await using (var stream = new FileStream(configPath, FileMode.Create))

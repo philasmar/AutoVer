@@ -1,0 +1,10 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "ChangelogMessages": [
+        "Add a \u0027None\u0027 IncrementType which does not perform any increment operation"
+      ]
+    }
+  ]
+}
