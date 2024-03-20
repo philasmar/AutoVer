@@ -1,5 +1,12 @@
 ## Release 2024-03-20
 
+### AutoVer (0.0.15)
+* Add 'DefaultIncrementType' to AutoVer config
+* Add a 'None' IncrementType which does not perform any increment operation
+* Add icon to the AutoVer NuGet package
+
+## Release 2024-03-20
+
 ### AutoVer (0.0.14)
 * Change command now supports repositories with multiple projects
 
