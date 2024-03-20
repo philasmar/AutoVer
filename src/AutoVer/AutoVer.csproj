@@ -17,7 +17,7 @@
         <RepositoryType>git</RepositoryType>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
-        <Version>0.0.13</Version>
+        <Version>0.0.14</Version>
     </PropertyGroup>
 
     <ItemGroup>
