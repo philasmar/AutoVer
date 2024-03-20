@@ -35,18 +35,17 @@ public class VersionCommand(
                     throw new NoVersionTagException($"The project '{availableProject.Path}' does not have a {ProjectConstants.VersionTag} tag. Add a {ProjectConstants.VersionTag} tag and run the tool again.");
             }
         }
-        
+
+        var projectsIncremented = false;
         foreach (var availableProject in userConfiguration.Projects)
         {
             if (availableProject.ProjectDefinition is null)
                 throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
-        
+            if (!availableProject.IncrementType.Equals(IncrementType.None))
+                projectsIncremented = true;
             projectHandler.UpdateVersion(availableProject.ProjectDefinition, availableProject.IncrementType, availableProject.PrereleaseLabel);
             gitHandler.StageChanges(userConfiguration, availableProject.Path);
         }
-        
-        var dateTimeNow = DateTime.UtcNow;
-        var nextVersionNumber = $"version_{dateTimeNow:yyyy-MM-dd.HH.mm.ss}";
 
         // When done, reset the config file if the user had one
         if (userConfiguration.PersistConfiguration)
@@ -56,6 +55,12 @@ public class VersionCommand(
                 IncrementType = true
             });
         }
+
+        if (!projectsIncremented)
+            return;
+        
+        var dateTimeNow = DateTime.UtcNow;
+        var nextVersionNumber = $"version_{dateTimeNow:yyyy-MM-dd.HH.mm.ss}";
 
         if (!optionNoCommit)
         {

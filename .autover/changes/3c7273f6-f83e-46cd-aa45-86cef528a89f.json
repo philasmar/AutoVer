@@ -1,0 +1,10 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "ChangelogMessages": [
+        "Add \u0027DefaultIncrementType\u0027 to AutoVer config"
+      ]
+    }
+  ]
+}

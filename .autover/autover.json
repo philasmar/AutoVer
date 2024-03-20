@@ -6,6 +6,5 @@
       "IncrementType": "Patch"
     }
   ],
-  "UseCommitsForChangelog": false,
-  "DefaultIncrementType": "Patch"
+  "UseCommitsForChangelog": false
 }
