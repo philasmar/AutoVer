@@ -11,6 +11,7 @@ public class ChangeCommand(
     public async Task ExecuteAsync(
         string? optionProjectPath, 
         string? optionIncrementType,
+        string? optionProjectName,
         string? optionMessage)
     {
         if (!Enum.TryParse(optionIncrementType, out IncrementType incrementType))
@@ -27,13 +28,13 @@ public class ChangeCommand(
             toolInteractiveService.WriteErrorLine($"This repository is not configured to use change files. Change '{nameof(userConfiguration.UseCommitsForChangelog)}' to 'false' in the repo's '.autover/autover.json' file.");
             return;
         }
-        if (userConfiguration.Projects.Count > 1 && !string.IsNullOrEmpty(optionMessage))
+        if (userConfiguration.Projects.Count > 1 && !string.IsNullOrEmpty(optionMessage) && string.IsNullOrEmpty(optionProjectName))
         {
             toolInteractiveService.WriteErrorLine("You need to specify a project name with the change message. Use the '--project-name' argument to specify the project name.");
             return;
         }
 
-        var changeFile = changeFileHandler.GenerateChangeFile(userConfiguration, optionMessage);
+        var changeFile = changeFileHandler.GenerateChangeFile(userConfiguration, optionProjectName, optionMessage);
 
         await changeFileHandler.PersistChangeFile(userConfiguration, changeFile);
     }

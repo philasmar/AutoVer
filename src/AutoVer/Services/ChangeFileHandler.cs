@@ -14,11 +14,30 @@ public class ChangeFileHandler(
     IToolInteractiveService toolInteractiveService,
     IGitHandler gitHandler) : IChangeFileHandler
 {
-    public ChangeFile GenerateChangeFile(UserConfiguration configuration, string? changeMessage)
+    public ChangeFile GenerateChangeFile(UserConfiguration configuration, string? projectName, string? changeMessage)
     {
         var changeFile = new ChangeFile();
-        foreach (var project in configuration.Projects)
+        if (string.IsNullOrEmpty(projectName))
         {
+            if (configuration.Projects.Count > 1)
+            {
+                throw new InvalidProjectNameSpecifiedException(
+                    "You need to specify a project name with the change message. Use the '--project-name' argument to specify the project name.");
+            }
+
+            var project = configuration.Projects.First();
+            changeFile.Projects.Add(new ProjectChange
+            {
+                Name = project.Name,
+                ChangelogMessages = !string.IsNullOrEmpty(changeMessage) ? [changeMessage] : []
+            });
+        }
+        else
+        {
+            var project = configuration.Projects.FirstOrDefault(x => x.Name.Equals(projectName));
+            if (project is null)
+                throw new InvalidProjectNameSpecifiedException(
+                    $"The project '{projectName}' does not exist. Please specify a valid project name.");
             changeFile.Projects.Add(new ProjectChange
             {
                 Name = project.Name,

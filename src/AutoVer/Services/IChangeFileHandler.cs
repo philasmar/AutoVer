@@ -4,7 +4,7 @@ namespace AutoVer.Services;
 
 public interface IChangeFileHandler
 {
-    ChangeFile GenerateChangeFile(UserConfiguration configuration, string? changeMessage);
+    ChangeFile GenerateChangeFile(UserConfiguration configuration, string? projectName, string? changeMessage);
 
     Task PersistChangeFile(UserConfiguration configuration, ChangeFile changeFile);
 

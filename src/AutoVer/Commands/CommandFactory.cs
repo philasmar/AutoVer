@@ -160,10 +160,12 @@ public class CommandFactory(
             "change",
             "Create a change file that contains information on the current changes.");
         
+        Option<string> projectNameOption = new(["--project-name"], "The name of the project to add a change to.");
         Option<string> messageOption = new(["-m", "--message"], "The change message for a given project.");
         
         lock (ChildCommandLock)
         {
+            changeCommand.Add(projectNameOption);
             changeCommand.Add(messageOption);
         }
         
@@ -173,10 +175,11 @@ public class CommandFactory(
             {
                 var optionProjectPath = context.ParseResult.GetValueForOption(OptionProjectPath);
                 var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
+                var optionProjectName = context.ParseResult.GetValueForOption(projectNameOption);
                 var optionMessage = context.ParseResult.GetValueForOption(messageOption);
                 
                 var command = new ChangeCommand(configurationManager, toolInteractiveService, changeFileHandler);
-                await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionMessage);
+                await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionProjectName, optionMessage);
                     
                 context.ExitCode = CommandReturnCodes.Success;
             }

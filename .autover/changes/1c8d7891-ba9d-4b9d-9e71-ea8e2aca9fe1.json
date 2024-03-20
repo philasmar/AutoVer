@@ -1,0 +1,10 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "ChangelogMessages": [
+        "Change command now supports repositories with multiple projects"
+      ]
+    }
+  ]
+}
