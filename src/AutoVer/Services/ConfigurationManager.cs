@@ -148,8 +148,8 @@ public class ConfigurationManager(
             throw new InvalidProjectException($"The project '{projectPath}' is invalid.");
         var projectFileName = projectParts.Last();
         var projectFileNameParts = projectFileName.Split('.');
-        if (projectFileNameParts.Length != 2)
+        if (projectFileNameParts.Length < 2)
             throw new InvalidProjectException($"The project '{projectPath}' is invalid.");
-        return projectFileNameParts.First();
+        return projectFileName.Replace($".{projectFileNameParts.Last()}", "");
     }
 }

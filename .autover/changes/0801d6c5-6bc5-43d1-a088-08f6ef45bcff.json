@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Fixed an issue while parsing project name"
+      ]
+    }
+  ]
+}
