@@ -130,6 +130,7 @@ public class GitHandler(
         string fullPath = paths[0];
         Tree tree = commit.Tree;
         TreeEntry entry = tree.First(x => x.Path == fullPath);
+        var files = new List<GitFile>();
         if(entry.TargetType == TreeEntryTargetType.Tree)
         {
             foreach(string pathPart in paths.Skip(1).ToArray())
@@ -138,11 +139,13 @@ public class GitHandler(
                     tree = (Tree)entry.Target;
 
                 fullPath += "/" + pathPart;
-                entry = tree.First(x => x.Path == fullPath);
+                var currentEntry = tree.FirstOrDefault(x => x.Path == fullPath);
+                if (currentEntry is null)
+                    return files;
+                entry = currentEntry;
             }
         }
 
-        var files = new List<GitFile>();
 
         if (entry.TargetType == TreeEntryTargetType.Tree)
         {

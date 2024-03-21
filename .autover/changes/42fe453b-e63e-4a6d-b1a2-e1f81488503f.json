@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Fix issue causing changelog creation to fail when changes folder doesn\u0027t exist"
+      ]
+    }
+  ]
+}
