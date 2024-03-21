@@ -1,5 +1,10 @@
 ## Release 2024-03-21
 
+### AutoVer (0.0.18)
+* Fix issue causing changelog creation to fail when changes folder doesn't exist
+
+## Release 2024-03-21
+
 ### AutoVer (0.0.17)
 * Fixed an issue while parsing project name
 
