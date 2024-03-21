@@ -1,5 +1,10 @@
 ## Release 2024-03-21
 
+### AutoVer (0.0.17)
+* Fixed an issue while parsing project name
+
+## Release 2024-03-21
+
 ### AutoVer (0.0.16)
 * Change files can now specify the increment type
 
