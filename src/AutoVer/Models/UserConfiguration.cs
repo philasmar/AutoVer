@@ -12,6 +12,7 @@ public class UserConfiguration
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public IncrementType DefaultIncrementType { get; set; } = IncrementType.Patch;
     public Dictionary<string, string>? ChangelogCategories { get; set; }
+    public bool ChangeFilesDetermineIncrementType { get; set; } = false;
     
     public class Project
     {
@@ -19,7 +20,7 @@ public class UserConfiguration
         public required string Path { get; set; }
         
         [JsonConverter(typeof(JsonStringEnumConverter))]
-        public IncrementType IncrementType { get; set; } = IncrementType.Patch;
+        public IncrementType? IncrementType { get; set; }
         
         public string? PrereleaseLabel { get; set; }
     

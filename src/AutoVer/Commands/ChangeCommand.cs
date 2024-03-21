@@ -34,7 +34,7 @@ public class ChangeCommand(
             return;
         }
 
-        var changeFile = changeFileHandler.GenerateChangeFile(userConfiguration, optionProjectName, optionMessage);
+        var changeFile = changeFileHandler.GenerateChangeFile(userConfiguration, incrementType, optionProjectName, optionMessage);
 
         await changeFileHandler.PersistChangeFile(userConfiguration, changeFile);
     }

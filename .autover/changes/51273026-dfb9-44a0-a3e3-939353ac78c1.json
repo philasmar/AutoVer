@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Change files can now specify the increment type"
+      ]
+    }
+  ]
+}

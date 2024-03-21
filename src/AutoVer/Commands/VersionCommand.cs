@@ -8,7 +8,8 @@ namespace AutoVer.Commands;
 public class VersionCommand(
     IProjectHandler projectHandler,
     IGitHandler gitHandler,
-    IConfigurationManager configurationManager)
+    IConfigurationManager configurationManager,
+    IChangeFileHandler changeFileHandler)
 {
     public async Task ExecuteAsync(
         string? optionProjectPath, 
@@ -23,7 +24,9 @@ public class VersionCommand(
         }
         
         var userConfiguration = await configurationManager.RetrieveUserConfiguration(optionProjectPath, incrementType);
-
+        if (string.IsNullOrEmpty(userConfiguration.GitRoot))
+            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
+        
         if (!optionSkipVersionTagCheck)
         {
             foreach (var availableProject in userConfiguration.Projects)
@@ -36,6 +39,13 @@ public class VersionCommand(
             }
         }
 
+        IDictionary<string, IncrementType> projectIncrements = new Dictionary<string, IncrementType>();
+        if (userConfiguration.ChangeFilesDetermineIncrementType)
+        {
+            var changeFiles = await changeFileHandler.LoadChangeFilesFromRepository(userConfiguration.GitRoot);
+            projectIncrements = changeFileHandler.GetProjectIncrementTypesFromChangeFiles(changeFiles);
+        }
+
         var projectsIncremented = false;
         foreach (var availableProject in userConfiguration.Projects)
         {
@@ -43,17 +53,31 @@ public class VersionCommand(
                 throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
             if (!availableProject.IncrementType.Equals(IncrementType.None))
                 projectsIncremented = true;
-            projectHandler.UpdateVersion(availableProject.ProjectDefinition, availableProject.IncrementType, availableProject.PrereleaseLabel);
+            if (userConfiguration.ChangeFilesDetermineIncrementType)
+            {
+                var projectIncrementType = IncrementType.None;
+                if (projectIncrements.ContainsKey(availableProject.Name))
+                    projectIncrementType = projectIncrements[availableProject.Name];
+                projectHandler.UpdateVersion(availableProject.ProjectDefinition, projectIncrementType, availableProject.PrereleaseLabel);
+            }
+            else
+            {
+                var projectIncrementType = availableProject.IncrementType ?? IncrementType.Patch;
+                projectHandler.UpdateVersion(availableProject.ProjectDefinition, projectIncrementType, availableProject.PrereleaseLabel);
+            }
             gitHandler.StageChanges(userConfiguration, availableProject.Path);
         }
 
         // When done, reset the config file if the user had one
         if (userConfiguration.PersistConfiguration)
         {
-            await configurationManager.ResetUserConfiguration(userConfiguration, new UserConfigurationResetRequest
+            if (!userConfiguration.ChangeFilesDetermineIncrementType)
             {
-                IncrementType = true
-            });
+                await configurationManager.ResetUserConfiguration(userConfiguration, new UserConfigurationResetRequest
+                {
+                    IncrementType = true
+                });
+            }
         }
 
         if (!projectsIncremented)

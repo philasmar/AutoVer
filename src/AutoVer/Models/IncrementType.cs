@@ -2,8 +2,8 @@ namespace AutoVer.Models;
 
 public enum IncrementType
 {
-    None,
-    Patch,
-    Minor,
-    Major
+    None = 0,
+    Patch = 1,
+    Minor = 2,
+    Major = 3
 }

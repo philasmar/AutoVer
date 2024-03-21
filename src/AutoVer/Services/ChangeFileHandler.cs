@@ -14,7 +14,7 @@ public class ChangeFileHandler(
     IToolInteractiveService toolInteractiveService,
     IGitHandler gitHandler) : IChangeFileHandler
 {
-    public ChangeFile GenerateChangeFile(UserConfiguration configuration, string? projectName, string? changeMessage)
+    public ChangeFile GenerateChangeFile(UserConfiguration configuration, IncrementType incrementType, string? projectName, string? changeMessage)
     {
         var changeFile = new ChangeFile();
         if (string.IsNullOrEmpty(projectName))
@@ -29,6 +29,7 @@ public class ChangeFileHandler(
             changeFile.Projects.Add(new ProjectChange
             {
                 Name = project.Name,
+                Type = configuration.ChangeFilesDetermineIncrementType ? incrementType : null,
                 ChangelogMessages = !string.IsNullOrEmpty(changeMessage) ? [changeMessage] : []
             });
         }
@@ -41,6 +42,7 @@ public class ChangeFileHandler(
             changeFile.Projects.Add(new ProjectChange
             {
                 Name = project.Name,
+                Type = configuration.ChangeFilesDetermineIncrementType ? incrementType : null,
                 ChangelogMessages = !string.IsNullOrEmpty(changeMessage) ? [changeMessage] : []
             });
         }
@@ -68,33 +70,85 @@ public class ChangeFileHandler(
             }));
     }
 
-    public async Task<IList<ChangeFile>> LoadChangeFilesFromRepository(string repositoryRoot, string tagName)
+    public async Task<IList<ChangeFile>> LoadChangeFilesFromRepository(string repositoryRoot, string? tagName = null)
     {
         var changeFilesPath = pathManager.Combine(ConfigurationConstants.ConfigFolderName, ConfigurationConstants.ChangesFolderName);
         var absoluteChangeFilesPath = pathManager.Combine(repositoryRoot, changeFilesPath);
 
         if (!directoryManager.Exists(absoluteChangeFilesPath))
             directoryManager.CreateDirectory(absoluteChangeFilesPath);
-        var gitFiles = gitHandler.GetFolderByTag(repositoryRoot, tagName, changeFilesPath);
 
         var changeFiles = new List<ChangeFile>();
         
-        foreach (var gitFile in gitFiles)
+        if (!string.IsNullOrEmpty(tagName))
         {
-            try
+            var gitFiles = gitHandler.GetFolderByTag(repositoryRoot, tagName, changeFilesPath);
+        
+            foreach (var gitFile in gitFiles)
             {
-                await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(gitFile.Content));
-                var changeFile = await JsonSerializer.DeserializeAsync<ChangeFile>(stream);
-                if (changeFile != null)
-                    changeFiles.Add(changeFile);
+                try
+                {
+                    await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(gitFile.Content));
+                    var changeFile = await JsonSerializer.DeserializeAsync<ChangeFile>(stream);
+                    if (changeFile != null)
+                        changeFiles.Add(changeFile);
+                }
+                catch (Exception)
+                {
+                    toolInteractiveService.WriteErrorLine($"Unable to deserialize the change file '{gitFile.Path}'.");
+                }
             }
-            catch (Exception)
+        }
+        else
+        {
+            var changeFilePaths = directoryManager.GetFiles(changeFilesPath, "*.json").ToList();
+
+            foreach (var changeFilePath in changeFilePaths)
             {
-                toolInteractiveService.WriteErrorLine($"Unable to deserialize the change file '{gitFile.Path}'.");
+                try
+                {
+                    var content = await fileManager.ReadAllTextAsync(changeFilePath);
+                    var changeFile = JsonSerializer.Deserialize<ChangeFile>(content);
+                    if (changeFile != null)
+                        changeFiles.Add(changeFile);
+                }
+                catch (Exception)
+                {
+                    toolInteractiveService.WriteErrorLine($"Unable to deserialize the change file '{changeFilePath}'.");
+                }
+            }
+        }
+        
+        return changeFiles;
+    }
+
+    public IDictionary<string, IncrementType> GetProjectIncrementTypesFromChangeFiles(IList<ChangeFile> changeFiles)
+    {
+        var projectIncrements = new Dictionary<string, IncrementType>();
+        
+        foreach (var changeFile in changeFiles)
+        {
+            foreach (var project in changeFile.Projects)
+            {
+                if (project.Type is null)
+                    throw new InvalidChangeFileException(
+                        $"The repository is configured to use change files to determine project increment type. The change file '{changeFile.Path}' does not specify an increment type.");
+
+                var projectType = project.Type ?? IncrementType.Patch;
+                
+                if (projectIncrements.ContainsKey(project.Name))
+                {
+                    if (project.Type > projectIncrements[project.Name])
+                        projectIncrements[project.Name] = projectType;
+                }
+                else
+                {
+                    projectIncrements[project.Name] = projectType;
+                }
             }
         }
 
-        return changeFiles;
+        return projectIncrements;
     }
 
     public void ResetChangeFiles(UserConfiguration userConfiguration)

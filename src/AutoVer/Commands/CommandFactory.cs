@@ -73,7 +73,7 @@ public class CommandFactory(
                 var optionNoCommit = context.ParseResult.GetValueForOption(noCommitOption);
                 var optionNoTag = context.ParseResult.GetValueForOption(noTagOption);
                 
-                var command = new VersionCommand(projectHandler, gitHandler, configurationManager);
+                var command = new VersionCommand(projectHandler, gitHandler, configurationManager, changeFileHandler);
                 await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck, optionNoCommit, optionNoTag);
                     
                 context.ExitCode = CommandReturnCodes.Success;
@@ -165,6 +165,8 @@ public class CommandFactory(
         
         lock (ChildCommandLock)
         {
+            changeCommand.Add(OptionProjectPath);
+            changeCommand.Add(OptionIncrementType);
             changeCommand.Add(projectNameOption);
             changeCommand.Add(messageOption);
         }
