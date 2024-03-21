@@ -1,3 +1,8 @@
+## Release 2024-03-21
+
+### AutoVer (0.0.16)
+* Change files can now specify the increment type
+
 ## Release 2024-03-20
 
 ### AutoVer (0.0.15)
