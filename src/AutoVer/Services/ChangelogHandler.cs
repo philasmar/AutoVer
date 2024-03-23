@@ -1,4 +1,3 @@
-using System.Globalization;
 using AutoVer.Constants;
 using AutoVer.Exceptions;
 using AutoVer.Models;
@@ -10,44 +9,21 @@ public class ChangelogHandler(
     IGitHandler gitHandler,
     IFileManager fileManager,
     IPathManager pathManager,
-    IChangeFileHandler changeFileHandler) : IChangelogHandler
+    IChangeFileHandler changeFileHandler,
+    IVersionHandler versionHandler) : IChangelogHandler
 {
     public async Task<ChangelogEntry> GenerateChangelog(UserConfiguration configuration)
     {
-        if (string.IsNullOrEmpty(configuration.GitRoot))
-            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
-        
-        var tags = gitHandler.GetTags(configuration.GitRoot);
-        var versionNumbers = tags
-            .Where(x => x.StartsWith("version_"))
-            .Select(x => x.Replace("version_", ""))
-            .Select(x => DateTime.ParseExact(x, "yyyy-MM-dd.HH.mm.ss", CultureInfo.InvariantCulture))
-            .OrderDescending()
-            .ToList();
-        if (versionNumbers.Count == 0)
-            throw new InvalidVersionTag($"The Git repository '{configuration.GitRoot}' does not have a valid version tag. Please run 'autover version' first.");
-        var currentVersionDate = versionNumbers[0];
-
         var changelogEntry = new ChangelogEntry
         {
-            Title = $"Release {currentVersionDate:yyyy-MM-dd}",
-            TagName = $"version_{currentVersionDate:yyyy-MM-dd.HH.mm.ss}"
+            Title = versionHandler.GetCurrentReleaseName(configuration),
+            TagName = versionHandler.GetCurrentVersionTag(configuration)
         };
         
         if (configuration.UseCommitsForChangelog)
         {
-            List<ConventionalCommit> commits;
-            if (versionNumbers.Count > 1)
-            {
-                var lastVersionDate = versionNumbers[1];
-                var lastVersionTag = $"version_{lastVersionDate:yyyy-MM-dd.HH.mm.ss}";
-                
-                commits = gitHandler.GetVersionCommits(configuration, lastVersionTag);
-            }
-            else
-            {
-                commits = gitHandler.GetVersionCommits(configuration);
-            }
+            var lastVersionTag = versionHandler.GetLastVersionTag(configuration);
+            var commits = gitHandler.GetVersionCommits(configuration, lastVersionTag);
 
             var commitTypes = 
                 commits
@@ -150,9 +126,6 @@ public class ChangelogHandler(
 
     public async Task PersistChangelog(UserConfiguration configuration, string changelog, string? path)
     {
-        if (string.IsNullOrEmpty(configuration.GitRoot))
-            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
-        
         if (string.IsNullOrEmpty(path))
         {
             path = pathManager.Combine(configuration.GitRoot, ChangelogConstants.DefaultChangelogFileName);

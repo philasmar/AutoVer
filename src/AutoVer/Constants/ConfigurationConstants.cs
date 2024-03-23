@@ -1,6 +1,6 @@
 namespace AutoVer.Constants;
 
-public class ConfigurationConstants
+public abstract class ConfigurationConstants
 {
     public const string ConfigFolderName = ".autover";
     public const string ChangesFolderName = "changes";

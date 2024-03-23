@@ -69,12 +69,16 @@ public class ConfigurationManager(
                     throw new ConfiguredProjectNotFoundException($"The configured project '{project.Path}' does not exist in the specified path '{projectPath}'.");
             }
 
+            userConfiguration.GitRoot = gitRoot;
             userConfiguration.PersistConfiguration = true;
         }
         else
         {
             if (userConfiguration is null)
-                userConfiguration = new();
+                userConfiguration = new()
+                {
+                    GitRoot = gitRoot
+                };
 
             if (userConfiguration.Projects is null)
                 userConfiguration.Projects = [];
@@ -90,17 +94,15 @@ public class ConfigurationManager(
                 });
             }
         }
-
-        userConfiguration.GitRoot = gitRoot;
+        
+        if (string.IsNullOrEmpty(userConfiguration.GitRoot))
+            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
 
         return userConfiguration;
     }
 
     public async Task ResetUserConfiguration(UserConfiguration userConfiguration, UserConfigurationResetRequest resetRequest)
     {
-        if (string.IsNullOrEmpty(userConfiguration.GitRoot))
-            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
-
         var configPath = pathManager.Combine(userConfiguration.GitRoot, ConfigurationConstants.ConfigFolderName, ConfigurationConstants.ConfigFileName);
         if (!fileManager.Exists(configPath))
             return;

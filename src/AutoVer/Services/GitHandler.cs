@@ -10,6 +10,8 @@ public class GitHandler(
     IFileManager fileManager,
     ICommitHandler commitHandler) : IGitHandler
 {
+    private readonly Dictionary<string, string> _gitRootCache = new();
+    
     public string FindGitRootDirectory(string? currentPath)
     {
         if (string.IsNullOrEmpty(currentPath))
@@ -23,12 +25,16 @@ public class GitHandler(
         {
             throw new InvalidProjectException($"The path '{currentPath}' is not a valid project path.");
         }
+
+        if (_gitRootCache.TryGetValue(currentPath!, out var gitRoot))
+            return gitRoot;
         
         while (currentPath != null)
         {
             if (directoryManager.GetDirectories(currentPath, ".git").Any())
             {
                 var sourceControlRootDirectory = directoryManager.GetDirectoryInfo(currentPath).FullName;
+                _gitRootCache[currentPath] = sourceControlRootDirectory;
                 return sourceControlRootDirectory;
             }
 

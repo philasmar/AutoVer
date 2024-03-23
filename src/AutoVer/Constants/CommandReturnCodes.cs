@@ -5,7 +5,7 @@ namespace AutoVer.Constants;
 /// <summary>
 /// Standardized CLI return codes for Commands.
 /// </summary>
-public class CommandReturnCodes
+public abstract class CommandReturnCodes
 {
     /// <summary>
     /// Command completed and honored user's intention.

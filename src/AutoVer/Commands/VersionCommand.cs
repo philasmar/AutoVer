@@ -9,7 +9,8 @@ public class VersionCommand(
     IProjectHandler projectHandler,
     IGitHandler gitHandler,
     IConfigurationManager configurationManager,
-    IChangeFileHandler changeFileHandler)
+    IChangeFileHandler changeFileHandler,
+    IVersionHandler versionHandler)
 {
     public async Task ExecuteAsync(
         string? optionProjectPath, 
@@ -24,8 +25,6 @@ public class VersionCommand(
         }
         
         var userConfiguration = await configurationManager.RetrieveUserConfiguration(optionProjectPath, incrementType);
-        if (string.IsNullOrEmpty(userConfiguration.GitRoot))
-            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
         
         if (!optionSkipVersionTagCheck)
         {
@@ -82,17 +81,14 @@ public class VersionCommand(
 
         if (!projectsIncremented)
             return;
-        
-        var dateTimeNow = DateTime.UtcNow;
-        var nextVersionNumber = $"version_{dateTimeNow:yyyy-MM-dd.HH.mm.ss}";
 
         if (!optionNoCommit)
         {
-            gitHandler.CommitChanges(userConfiguration, $"Release {dateTimeNow:yyyy-MM-dd}");
+            gitHandler.CommitChanges(userConfiguration, versionHandler.GetNewReleaseName());
 
             if (!optionNoTag)
             {
-                gitHandler.AddTag(userConfiguration, nextVersionNumber);
+                gitHandler.AddTag(userConfiguration, versionHandler.GetNewVersionTag());
             }
         }
     }
