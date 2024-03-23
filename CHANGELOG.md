@@ -1,3 +1,9 @@
+## Release 2024-03-23
+
+### AutoVer (0.0.19)
+* Add caching to commonly called methods to improve speed and efficiency
+* Change the version tag prefix from 'version' to 'release'
+
 ## Release 2024-03-21
 
 ### AutoVer (0.0.18)

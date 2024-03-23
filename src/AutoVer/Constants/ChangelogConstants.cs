@@ -1,6 +1,6 @@
 namespace AutoVer.Constants;
 
-public class ChangelogConstants
+public abstract class ChangelogConstants
 {
     public const string DefaultChangelogFileName = "CHANGELOG.md";
 
