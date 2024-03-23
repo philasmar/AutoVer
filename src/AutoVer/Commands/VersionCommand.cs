@@ -84,11 +84,11 @@ public class VersionCommand(
 
         if (!optionNoCommit)
         {
-            gitHandler.CommitChanges(userConfiguration, versionHandler.GetNewReleaseName());
+            gitHandler.CommitChanges(userConfiguration, versionHandler.GetNewReleaseName(userConfiguration));
 
             if (!optionNoTag)
             {
-                gitHandler.AddTag(userConfiguration, versionHandler.GetNewVersionTag());
+                gitHandler.AddTag(userConfiguration, versionHandler.GetNewVersionTag(userConfiguration));
             }
         }
     }
