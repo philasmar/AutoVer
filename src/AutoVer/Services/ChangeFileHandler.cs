@@ -52,9 +52,6 @@ public class ChangeFileHandler(
 
     public async Task PersistChangeFile(UserConfiguration configuration, ChangeFile changeFile)
     {
-        if (string.IsNullOrEmpty(configuration.GitRoot))
-            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
-
         var changeFolder = pathManager.Combine(configuration.GitRoot, ConfigurationConstants.ConfigFolderName,
             ConfigurationConstants.ChangesFolderName);
 
@@ -153,9 +150,6 @@ public class ChangeFileHandler(
 
     public void ResetChangeFiles(UserConfiguration userConfiguration)
     {
-        if (string.IsNullOrEmpty(userConfiguration.GitRoot))
-            throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
-
         var changeFolderPath = pathManager.Combine(userConfiguration.GitRoot, ConfigurationConstants.ConfigFolderName, ConfigurationConstants.ChangesFolderName);
         if (!directoryManager.Exists(changeFolderPath))
             return;

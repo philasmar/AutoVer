@@ -1,6 +1,6 @@
 namespace AutoVer.Constants;
 
-public class ProjectConstants
+public abstract class ProjectConstants
 {
     public const string VersionTag = "Version";
 }

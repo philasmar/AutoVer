@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Add caching to commonly called methods to improve speed and efficiency"
+      ]
+    }
+  ]
+}
