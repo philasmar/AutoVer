@@ -64,15 +64,29 @@ public class ProjectHandler(
         return projectDefinitions;
     }
 
-    public void UpdateVersion(ProjectDefinition projectDefinition, IncrementType incrementType, string? prereleaseLabel = null)
+    public void UpdateVersion(ProjectDefinition projectDefinition, IncrementType incrementType, string? prereleaseLabel = null, string? overrideVersion = null)
     {
         var versionTagList = projectDefinition.Contents.GetElementsByTagName(ProjectConstants.VersionTag).Cast<XmlNode>().ToList();
         if (!versionTagList.Any())
             throw new NoVersionTagException($"The project '{projectDefinition.ProjectPath}' does not have a {ProjectConstants.VersionTag} tag. Add a {ProjectConstants.VersionTag} tag and run the tool again.");
-
+        
         var versionTag = versionTagList.First();
-        var nextVersion = versionIncrementer.GetNextVersion(versionTag.InnerText, incrementType, prereleaseLabel);
-        versionTag.InnerText = nextVersion.ToString();
+        if (string.IsNullOrEmpty(overrideVersion))
+        {
+            var nextVersion = versionIncrementer.GetNextVersion(versionTag.InnerText, incrementType, prereleaseLabel);
+            versionTag.InnerText = nextVersion.ToString();
+        }
+        else
+        {
+            if (ThreePartVersion.TryParse(overrideVersion, out var version))
+            {
+                versionTag.InnerText = version.ToString();
+            }
+            else
+            {
+                throw new InvalidArgumentException($"The version '{overrideVersion}' you are trying to update to is invalid.");
+            }
+        }
         
         projectDefinition.Contents.Save(projectDefinition.ProjectPath);
     }

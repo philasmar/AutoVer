@@ -17,7 +17,8 @@ public class VersionCommand(
         string? optionIncrementType, 
         bool optionSkipVersionTagCheck, 
         bool optionNoCommit, 
-        bool optionNoTag)
+        bool optionNoTag,
+        string? optionUseVersion)
     {
         if (!Enum.TryParse(optionIncrementType, out IncrementType incrementType))
         {
@@ -57,12 +58,12 @@ public class VersionCommand(
                 var projectIncrementType = IncrementType.None;
                 if (projectIncrements.ContainsKey(availableProject.Name))
                     projectIncrementType = projectIncrements[availableProject.Name];
-                projectHandler.UpdateVersion(availableProject.ProjectDefinition, projectIncrementType, availableProject.PrereleaseLabel);
+                projectHandler.UpdateVersion(availableProject.ProjectDefinition, projectIncrementType, availableProject.PrereleaseLabel, optionUseVersion);
             }
             else
             {
                 var projectIncrementType = availableProject.IncrementType ?? IncrementType.Patch;
-                projectHandler.UpdateVersion(availableProject.ProjectDefinition, projectIncrementType, availableProject.PrereleaseLabel);
+                projectHandler.UpdateVersion(availableProject.ProjectDefinition, projectIncrementType, availableProject.PrereleaseLabel, optionUseVersion);
             }
             gitHandler.StageChanges(userConfiguration, availableProject.Path);
         }
@@ -79,7 +80,7 @@ public class VersionCommand(
             }
         }
 
-        if (!projectsIncremented)
+        if (!projectsIncremented && string.IsNullOrEmpty(optionUseVersion))
             return;
 
         if (!optionNoCommit)
