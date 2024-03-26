@@ -40,4 +40,23 @@ public class ThreePartVersion
             PrereleaseLabel = prereleaseLabel
         };
     }
+
+    public static bool TryParse(string? versionString, out ThreePartVersion version)
+    {
+        try
+        {
+            version = Parse(versionString);
+            return true;
+        }
+        catch (Exception)
+        {
+            version = new ThreePartVersion
+            {
+                Major = 0,
+                Minor = 0,
+                Patch = 1
+            };
+            return false;
+        }
+    }
 }
