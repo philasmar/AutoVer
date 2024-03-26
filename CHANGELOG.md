@@ -1,3 +1,8 @@
+## Release 2024-03-26
+
+### AutoVer (0.0.20)
+* Add ability to override the version of all projects
+
 ## Release 2024-03-23
 
 ### AutoVer (0.0.19)
