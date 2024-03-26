@@ -54,6 +54,7 @@ public class CommandFactory(
         Option<bool> skipVersionTagCheckOption = new(new[] { "--skip-version-tag-check" }, $"Skip version tag check and increment projects even if some don't have a {ProjectConstants.VersionTag} tag.");
         Option<bool> noCommitOption = new(new[] { "--no-commit" }, $"Do not commit changes after versioning.");
         Option<bool> noTagOption = new(new[] { "--no-tag" }, $"Do not add a Git Tag after versioning.");
+        Option<string> useVersionOption = new("--use-version", "Use a specific version for all projects.");
 
         lock (ChildCommandLock)
         {
@@ -62,6 +63,7 @@ public class CommandFactory(
             versionCommand.Add(skipVersionTagCheckOption);
             versionCommand.Add(noCommitOption);
             versionCommand.Add(noTagOption);
+            versionCommand.Add(useVersionOption);
         }
 
         versionCommand.SetHandler(async (context) =>
@@ -73,9 +75,10 @@ public class CommandFactory(
                 var optionSkipVersionTagCheck = context.ParseResult.GetValueForOption(skipVersionTagCheckOption);
                 var optionNoCommit = context.ParseResult.GetValueForOption(noCommitOption);
                 var optionNoTag = context.ParseResult.GetValueForOption(noTagOption);
+                var optionUseVersion = context.ParseResult.GetValueForOption(useVersionOption);
                 
                 var command = new VersionCommand(projectHandler, gitHandler, configurationManager, changeFileHandler, versionHandler);
-                await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck, optionNoCommit, optionNoTag);
+                await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck, optionNoCommit, optionNoTag, optionUseVersion);
                     
                 context.ExitCode = CommandReturnCodes.Success;
             }
