@@ -1,3 +1,8 @@
+## Release 2024-04-13
+
+### AutoVer (0.0.21)
+* Fix paths issue on Windows due to invalid Path separator
+
 ## Release 2024-03-26
 
 ### AutoVer (0.0.20)

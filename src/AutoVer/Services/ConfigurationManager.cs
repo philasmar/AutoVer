@@ -64,7 +64,10 @@ public class ConfigurationManager(
         {
             foreach (var project in userConfiguration.Projects)
             {
-                project.ProjectDefinition = availableProjects.FirstOrDefault(x => x.ProjectPath.Equals(Path.Combine(projectPath, project.Path.Replace('\\', Path.DirectorySeparatorChar))));
+                project.ProjectDefinition = availableProjects
+                    .FirstOrDefault(x => 
+                    x.ProjectPath.Replace(pathManager.DirectorySeparatorChar, '/')
+                    .Equals(pathManager.Combine(projectPath, project.Path).Replace(pathManager.DirectorySeparatorChar, '/')));
                 if (project.ProjectDefinition is null)
                     throw new ConfiguredProjectNotFoundException($"The configured project '{project.Path}' does not exist in the specified path '{projectPath}'.");
             }
@@ -145,7 +148,7 @@ public class ConfigurationManager(
 
     private string GetProjectName(string projectPath)
     {
-        var projectParts = projectPath.Split(Path.DirectorySeparatorChar);
+        var projectParts = projectPath.Split(pathManager.DirectorySeparatorChar);
         if (projectParts.Length == 0)
             throw new InvalidProjectException($"The project '{projectPath}' is invalid.");
         var projectFileName = projectParts.Last();

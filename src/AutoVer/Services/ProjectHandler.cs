@@ -9,6 +9,7 @@ namespace AutoVer.Services;
 public class ProjectHandler(
     IDirectoryManager directoryManager,
     IFileManager fileManager,
+    IPathManager pathManager,
     IVersionIncrementer versionIncrementer
     ) : IProjectHandler
 {
@@ -22,7 +23,7 @@ public class ProjectHandler(
             var files = directoryManager.GetFiles(projectPath, "*.csproj", SearchOption.AllDirectories).ToList();
             foreach (var file in files)
             {
-                var newPath = Path.Combine(projectPath, file);
+                var newPath = pathManager.Combine(projectPath, file);
                 if (fileManager.Exists(newPath))
                     projectPaths.Add(newPath);
             }
@@ -37,7 +38,7 @@ public class ProjectHandler(
 
         foreach (var project in projectPaths)
         {
-            var extension = Path.GetExtension(project);
+            var extension = pathManager.GetExtension(project);
             if (!string.Equals(extension, ".csproj"))
             {
                 var errorMessage = $"Invalid project path {project}. The project path must point to a .csproj file";

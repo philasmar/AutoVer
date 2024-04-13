@@ -8,6 +8,7 @@ namespace AutoVer.Services;
 public class GitHandler(
     IDirectoryManager directoryManager,
     IFileManager fileManager,
+    IPathManager pathManager,
     ICommitHandler commitHandler) : IGitHandler
 {
     private readonly Dictionary<string, string> _gitRootCache = new();
@@ -108,7 +109,7 @@ public class GitHandler(
         using var gitRepository = new Repository(gitRoot);
         var tag = gitRepository.Tags.First(x => x.FriendlyName.Equals(tagName));
         var commit = gitRepository.Lookup<Commit>(tag.Target.Sha);
-        string[] paths = filePath.Split('/');
+        string[] paths = filePath.Split(pathManager.DirectorySeparatorChar);
         string fullPath = paths[0];
         Tree tree = commit.Tree;
         TreeEntry entry = tree.First(x => x.Path == fullPath);
@@ -132,7 +133,7 @@ public class GitHandler(
         using var gitRepository = new Repository(gitRoot);
         var tag = gitRepository.Tags.First(x => x.FriendlyName.Equals(tagName));
         var commit = gitRepository.Lookup<Commit>(tag.Target.Sha);
-        string[] paths = folderPath.Split('/');
+        string[] paths = folderPath.Split(pathManager.DirectorySeparatorChar);
         string fullPath = paths[0];
         Tree tree = commit.Tree;
         TreeEntry entry = tree.First(x => x.Path == fullPath);
