@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Fix paths issue on Windows due to invalid Path separator"
+      ]
+    }
+  ]
+}
