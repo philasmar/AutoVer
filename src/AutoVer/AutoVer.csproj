@@ -18,7 +18,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <PackageIcon>icon.png</PackageIcon>
-        <Version>0.0.21</Version>
+        <Version>0.0.22</Version>
     </PropertyGroup>
 
     <ItemGroup>
