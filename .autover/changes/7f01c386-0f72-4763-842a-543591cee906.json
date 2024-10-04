@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Using the new setting UseSameVersionForAllProjects, users will now be able to force all the configured projects to use the same version. This version will be determined by the project with the currently highest version."
+      ]
+    }
+  ]
+}
