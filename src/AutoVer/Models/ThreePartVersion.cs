@@ -1,6 +1,6 @@
 namespace AutoVer.Models;
 
-public class ThreePartVersion
+public class ThreePartVersion : IComparable<ThreePartVersion>
 {
     public required int Major { get; set; }
     public required int Minor { get; set; }
@@ -58,5 +58,45 @@ public class ThreePartVersion
             };
             return false;
         }
+    }
+    
+    public int CompareTo(ThreePartVersion? other)
+    {
+        if (other == null) return 1;
+
+        int result = Major.CompareTo(other.Major);
+        if (result != 0) return result;
+
+        result = Minor.CompareTo(other.Minor);
+        if (result != 0) return result;
+
+        result = Patch.CompareTo(other.Patch);
+        if (result != 0) return result;
+
+        return string.Compare(PrereleaseLabel, other.PrereleaseLabel, StringComparison.Ordinal);
+    }
+    
+    public static bool operator >(ThreePartVersion? left, ThreePartVersion? right)
+    {
+        if (left is null) return false;
+        return left.CompareTo(right) > 0;
+    }
+
+    public static bool operator <(ThreePartVersion? left, ThreePartVersion? right)
+    {
+        if (left is null) return right is not null;
+        return left.CompareTo(right) < 0;
+    }
+
+    public static bool operator >=(ThreePartVersion? left, ThreePartVersion? right)
+    {
+        if (left is null) return right is null;
+        return left.CompareTo(right) >= 0;
+    }
+
+    public static bool operator <=(ThreePartVersion? left, ThreePartVersion? right)
+    {
+        if (left is null) return true;
+        return left.CompareTo(right) <= 0;
     }
 }

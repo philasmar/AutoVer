@@ -10,7 +10,8 @@ public class VersionCommand(
     IGitHandler gitHandler,
     IConfigurationManager configurationManager,
     IChangeFileHandler changeFileHandler,
-    IVersionHandler versionHandler)
+    IVersionHandler versionHandler,
+    IVersionIncrementer versionIncrementer)
 {
     public async Task ExecuteAsync(
         string? optionProjectPath, 
@@ -46,6 +47,15 @@ public class VersionCommand(
             projectIncrements = changeFileHandler.GetProjectIncrementTypesFromChangeFiles(changeFiles);
         }
 
+        ThreePartVersion? maxNextVersion = null;
+        if (userConfiguration.UseSameVersionForAllProjects)
+        {
+            maxNextVersion = versionIncrementer.GetNextMaxVersion(
+                userConfiguration.Projects, 
+                userConfiguration.ChangeFilesDetermineIncrementType ? projectIncrements : null,
+                incrementType);
+        }
+
         var projectsIncremented = false;
         foreach (var availableProject in userConfiguration.Projects)
         {
@@ -53,18 +63,38 @@ public class VersionCommand(
                 throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
             if (!availableProject.IncrementType.Equals(IncrementType.None))
                 projectsIncremented = true;
-            if (userConfiguration.ChangeFilesDetermineIncrementType)
+            if (userConfiguration.UseSameVersionForAllProjects)
             {
-                var projectIncrementType = IncrementType.None;
-                if (projectIncrements.ContainsKey(availableProject.Name))
+                var projectIncrementType = availableProject.IncrementType ?? IncrementType.Patch;
+                if (userConfiguration.ChangeFilesDetermineIncrementType &&
+                    projectIncrements.ContainsKey(availableProject.Name))
                     projectIncrementType = projectIncrements[availableProject.Name];
-                projectHandler.UpdateVersion(availableProject.ProjectDefinition, projectIncrementType, availableProject.PrereleaseLabel, optionUseVersion);
+                projectHandler.UpdateVersion(
+                    availableProject.ProjectDefinition, 
+                    projectIncrementType, 
+                    availableProject.PrereleaseLabel,
+                    optionUseVersion ?? maxNextVersion?.ToString());
             }
             else
             {
-                var projectIncrementType = availableProject.IncrementType ?? IncrementType.Patch;
-                projectHandler.UpdateVersion(availableProject.ProjectDefinition, projectIncrementType, availableProject.PrereleaseLabel, optionUseVersion);
+                if (userConfiguration.ChangeFilesDetermineIncrementType)
+                {
+                    var projectIncrementType = IncrementType.None;
+                    if (projectIncrements.ContainsKey(availableProject.Name))
+                        projectIncrementType = projectIncrements[availableProject.Name];
+                    projectHandler.UpdateVersion(
+                        availableProject.ProjectDefinition, 
+                        projectIncrementType, 
+                        availableProject.PrereleaseLabel,
+                        optionUseVersion);
+                }
+                else
+                {
+                    var projectIncrementType = availableProject.IncrementType ?? IncrementType.Patch;
+                    projectHandler.UpdateVersion(availableProject.ProjectDefinition, projectIncrementType, availableProject.PrereleaseLabel, optionUseVersion);
+                }
             }
+            
             gitHandler.StageChanges(userConfiguration, availableProject.Path);
         }
 

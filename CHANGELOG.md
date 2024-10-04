@@ -1,3 +1,8 @@
+## Release 2024-10-04
+
+### AutoVer (0.0.22)
+* Using the new setting UseSameVersionForAllProjects, users will now be able to force all the configured projects to use the same version. This version will be determined by the project with the currently highest version.
+
 ## Release 2024-04-13
 
 ### AutoVer (0.0.21)

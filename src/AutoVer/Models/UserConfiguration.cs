@@ -8,6 +8,7 @@ public class UserConfiguration
     internal bool PersistConfiguration { get; set; }
     public List<Project> Projects { get; set; } = [];
     public bool UseCommitsForChangelog { get; set; } = true;
+    public bool UseSameVersionForAllProjects { get; set; } = false;
         
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public IncrementType DefaultIncrementType { get; set; } = IncrementType.Patch;
