@@ -84,6 +84,19 @@ public class ChangelogHandler(
                 changeFile.Projects.RemoveAll(x => !configuredProjects.Contains(x.Name));
             }
 
+            if (configuration.UseSameVersionForAllProjects)
+            {
+                changeFiles.Add(new ChangeFile
+                {
+                     Projects = configuration.Projects.Select(x => new ProjectChange
+                     {
+                         Name = x.Name,
+                         Type = x.IncrementType,
+                         ChangelogMessages = new List<string>()
+                     }).ToList()
+                });
+            }
+
             var changelogCategories = new Dictionary<string, ChangelogCategory>();
             foreach (var changeFile in changeFiles)
             {
@@ -98,9 +111,6 @@ public class ChangelogHandler(
                     }
                     else
                     {
-                        if (project.ChangelogMessages.Count == 0)
-                            continue;
-                        
                         var configuredProject = configuration.Projects.First(x => x.Name.Equals(project.Name));
                         if (configuredProject.ProjectDefinition is null)
                             throw new InvalidProjectException($"The project '{configuredProject.Path}' is invalid.");
@@ -110,6 +120,13 @@ public class ChangelogHandler(
                             Name = configuredProject.Name,
                             Version = configuredProject.ProjectDefinition?.Version
                         };
+
+                        if (!configuration.UseSameVersionForAllProjects)
+                        {
+                            if (project.ChangelogMessages.Count == 0)
+                                continue;
+                        }
+                        
                         foreach (var changelogMessage in project.ChangelogMessages)
                         {
                             changelogCategory.Changes.Add(new ChangelogChange { Description = changelogMessage });

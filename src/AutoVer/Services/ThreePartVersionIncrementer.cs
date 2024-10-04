@@ -1,3 +1,4 @@
+using AutoVer.Exceptions;
 using AutoVer.Models;
 
 namespace AutoVer.Services;
@@ -42,5 +43,31 @@ public class ThreePartVersionIncrementer : IVersionIncrementer
         }
 
         return nextVersion;
+    }
+
+    public ThreePartVersion GetNextMaxVersion(List<UserConfiguration.Project> projects, IDictionary<string, IncrementType>? projectIncrements, IncrementType globalIncrementType)
+    {
+        ThreePartVersion? maxNextVersion = null;
+        foreach (var availableProject in projects)
+        {
+            if (availableProject.ProjectDefinition is null)
+                throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
+            
+            var projectIncrementType = availableProject.IncrementType ?? globalIncrementType;
+            if (projectIncrements is not null &&
+                projectIncrements.ContainsKey(availableProject.Name))
+                projectIncrementType = projectIncrements[availableProject.Name];
+            var version = GetNextVersion(availableProject.ProjectDefinition.Version, projectIncrementType, availableProject.PrereleaseLabel);
+            maxNextVersion ??= version;
+            if (version > maxNextVersion)
+                maxNextVersion = version;
+        }
+
+        return maxNextVersion ?? new ThreePartVersion
+        {
+            Major = 0,
+            Minor = 0,
+            Patch = 1
+        };
     }
 }
