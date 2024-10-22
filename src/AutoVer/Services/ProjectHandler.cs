@@ -20,18 +20,22 @@ public class ProjectHandler(
         if (!string.IsNullOrEmpty(projectPath) && directoryManager.Exists(projectPath))
         {
             projectPath = directoryManager.GetDirectoryInfo(projectPath).FullName;
-            var files = directoryManager.GetFiles(projectPath, "*.csproj", SearchOption.AllDirectories).ToList();
-            foreach (var file in files)
+            var projectPatterns = new List<string> { "*.csproj", "*.nuspec" };
+            foreach (var projectPattern in projectPatterns)
             {
-                var newPath = pathManager.Combine(projectPath, file);
-                if (fileManager.Exists(newPath))
-                    projectPaths.Add(newPath);
+                var files = directoryManager.GetFiles(projectPath, projectPattern, SearchOption.AllDirectories).ToList();
+                foreach (var file in files)
+                {
+                    var newPath = pathManager.Combine(projectPath, file);
+                    if (fileManager.Exists(newPath))
+                        projectPaths.Add(newPath);
+                }
             }
         }
 
         if (projectPaths.Count == 0)
         {
-            throw new Exception($"Failed to find a valid .csproj file at path {projectPath}");
+            throw new Exception($"Failed to find a valid .csproj or .nuspec file at path {projectPath}");
         }
 
         var projectDefinitions = new List<ProjectDefinition>();
@@ -39,9 +43,9 @@ public class ProjectHandler(
         foreach (var project in projectPaths)
         {
             var extension = pathManager.GetExtension(project);
-            if (!string.Equals(extension, ".csproj"))
+            if (!string.Equals(extension, ".csproj") && !string.Equals(extension, ".nuspec"))
             {
-                var errorMessage = $"Invalid project path {project}. The project path must point to a .csproj file";
+                var errorMessage = $"Invalid project path {project}. The project path must point to a .csproj or .nuspec file";
                 throw new Exception(errorMessage);
             }
             
@@ -52,8 +56,11 @@ public class ProjectHandler(
                 xmlProjectFile,
                 project
             );
-            
-            var version = xmlProjectFile.GetElementsByTagName(ProjectConstants.VersionTag);
+
+            var versionTag = ProjectConstants.VersionTag;
+            if (string.Equals(extension, ".nuspec"))
+                versionTag = ProjectConstants.NuspecVersionTag;
+            var version = xmlProjectFile.GetElementsByTagName(versionTag);
             if (version.Count > 0)
             {
                 projectDefinition.Version = version[0]?.InnerText;
@@ -67,7 +74,11 @@ public class ProjectHandler(
 
     public void UpdateVersion(ProjectDefinition projectDefinition, IncrementType incrementType, string? prereleaseLabel = null, string? overrideVersion = null)
     {
-        var versionTagList = projectDefinition.Contents.GetElementsByTagName(ProjectConstants.VersionTag).Cast<XmlNode>().ToList();
+        var extension = pathManager.GetExtension(projectDefinition.ProjectPath);
+        var versionTagName = ProjectConstants.VersionTag;
+        if (string.Equals(extension, ".nuspec"))
+            versionTagName = ProjectConstants.NuspecVersionTag;
+        var versionTagList = projectDefinition.Contents.GetElementsByTagName(versionTagName).Cast<XmlNode>().ToList();
         if (!versionTagList.Any())
             throw new NoVersionTagException($"The project '{projectDefinition.ProjectPath}' does not have a {ProjectConstants.VersionTag} tag. Add a {ProjectConstants.VersionTag} tag and run the tool again.");
         
@@ -94,7 +105,11 @@ public class ProjectHandler(
 
     public bool ProjectHasVersionTag(ProjectDefinition projectDefinition)
     {
-        var versionTagList = projectDefinition.Contents.GetElementsByTagName(ProjectConstants.VersionTag).Cast<XmlNode>().ToList();
+        var extension = pathManager.GetExtension(projectDefinition.ProjectPath);
+        var versionTag = ProjectConstants.VersionTag;
+        if (string.Equals(extension, ".nuspec"))
+            versionTag = ProjectConstants.NuspecVersionTag;
+        var versionTagList = projectDefinition.Contents.GetElementsByTagName(versionTag).Cast<XmlNode>().ToList();
         return versionTagList.Any();
     }
 }
