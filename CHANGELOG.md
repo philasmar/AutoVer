@@ -1,3 +1,8 @@
+## Release 2024-10-22
+
+### AutoVer (0.0.23)
+* Add support for nuspec files
+
 ## Release 2024-10-04
 
 ### AutoVer (0.0.22)
