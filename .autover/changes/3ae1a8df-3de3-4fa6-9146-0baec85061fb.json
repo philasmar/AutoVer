@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Add support for nuspec files"
+      ]
+    }
+  ]
+}
