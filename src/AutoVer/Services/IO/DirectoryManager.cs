@@ -2,15 +2,65 @@ namespace AutoVer.Services.IO;
 
 public class DirectoryManager : IDirectoryManager
 {
-    public DirectoryInfo GetDirectoryInfo(string path) => new DirectoryInfo(path);
+    private string CurrentDirectory = Directory.GetCurrentDirectory();
+
+    public void SetCurrentDirectory(string? currentDirectory)
+    {
+        CurrentDirectory = currentDirectory ?? Directory.GetCurrentDirectory();
+    }
+
+    public DirectoryInfo GetDirectoryInfo(string path)
+    {
+        if (Path.IsPathFullyQualified(path))
+            return new DirectoryInfo(path);
+        else
+        {
+            var fullPath = Path.GetFullPath(path, CurrentDirectory);
+            return new DirectoryInfo(fullPath);
+        }
+    }
 
     public string[] GetFiles(string path, string? searchPattern = null, SearchOption searchOption = SearchOption.TopDirectoryOnly)
-        => Directory.GetFiles(path, searchPattern ?? "*", searchOption);
+    {
+        if (Path.IsPathFullyQualified(path))
+            return Directory.GetFiles(path, searchPattern ?? "*", searchOption);
+        else
+        {
+            var fullPath = Path.GetFullPath(path, CurrentDirectory);
+            return Directory.GetFiles(fullPath, searchPattern ?? "*", searchOption);
+        }
+    }
 
     public string[] GetDirectories(string path, string? searchPattern = null, SearchOption searchOption = SearchOption.TopDirectoryOnly)
-        => Directory.GetDirectories(path, searchPattern ?? "*", searchOption);
+    {
+        if (Path.IsPathFullyQualified(path))
+            return Directory.GetDirectories(path, searchPattern ?? "*", searchOption);
+        else
+        {
+            var fullPath = Path.GetFullPath(path, CurrentDirectory);
+            return Directory.GetDirectories(fullPath, searchPattern ?? "*", searchOption);
+        }
+    }
     
-    public bool Exists(string path) => Directory.Exists(path);
+    public bool Exists(string path)
+    {
+        if (Path.IsPathFullyQualified(path))
+            return Directory.Exists(path);
+        else
+        {
+            var fullPath = Path.GetFullPath(path, CurrentDirectory);
+            return Directory.Exists(fullPath);
+        }
+    }
     
-    public DirectoryInfo CreateDirectory(string path) => Directory.CreateDirectory(path);
+    public DirectoryInfo CreateDirectory(string path)
+    {
+        if (Path.IsPathFullyQualified(path))
+            return Directory.CreateDirectory(path);
+        else
+        {
+            var fullPath = Path.GetFullPath(path, CurrentDirectory);
+            return Directory.CreateDirectory(fullPath);
+        }
+    }
 }

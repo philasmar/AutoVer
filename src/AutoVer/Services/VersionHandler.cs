@@ -103,7 +103,7 @@ public class VersionHandler(
         return versionNumbers;
     }
 
-    class VersionTag
+    public class VersionTag
     {
         public string Prefix { get; set; }
         public DateTime Date { get; set; }

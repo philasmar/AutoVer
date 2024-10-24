@@ -45,19 +45,42 @@ public class ThreePartVersionIncrementer : IVersionIncrementer
         return nextVersion;
     }
 
-    public ThreePartVersion GetNextMaxVersion(List<UserConfiguration.Project> projects, IDictionary<string, IncrementType>? projectIncrements, IncrementType globalIncrementType)
+    public ThreePartVersion GetNextMaxVersion(List<ProjectContainer> projects, IDictionary<string, IncrementType>? projectIncrements, IncrementType globalIncrementType)
     {
         ThreePartVersion? maxNextVersion = null;
         foreach (var availableProject in projects)
         {
-            if (availableProject.ProjectDefinition is null)
-                throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
-            
             var projectIncrementType = availableProject.IncrementType ?? globalIncrementType;
             if (projectIncrements is not null &&
                 projectIncrements.ContainsKey(availableProject.Name))
                 projectIncrementType = projectIncrements[availableProject.Name];
-            var version = GetNextVersion(availableProject.ProjectDefinition.Version, projectIncrementType, availableProject.PrereleaseLabel);
+            foreach (var project in availableProject.Projects)
+            {
+                var version = GetNextVersion(project.ProjectDefinition.Version, projectIncrementType, availableProject.PrereleaseLabel);
+                maxNextVersion ??= version;
+                if (version > maxNextVersion)
+                    maxNextVersion = version;
+            }
+        }
+
+        return maxNextVersion ?? new ThreePartVersion
+        {
+            Major = 0,
+            Minor = 0,
+            Patch = 1
+        };
+    }
+    
+    public ThreePartVersion GetNextMaxVersion(ProjectContainer project, IDictionary<string, IncrementType>? projectIncrements, IncrementType globalIncrementType)
+    {
+        ThreePartVersion? maxNextVersion = null;
+        var projectIncrementType = project.IncrementType ?? globalIncrementType;
+        if (projectIncrements is not null &&
+            projectIncrements.ContainsKey(project.Name))
+            projectIncrementType = projectIncrements[project.Name];
+        foreach (var subProject in project.Projects)
+        {
+            var version = GetNextVersion(subProject.ProjectDefinition.Version, projectIncrementType, project.PrereleaseLabel);
             maxNextVersion ??= version;
             if (version > maxNextVersion)
                 maxNextVersion = version;

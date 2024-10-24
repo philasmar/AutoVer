@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using AutoVer.Constants;
 using AutoVer.Exceptions;
 using AutoVer.Models;
+using AutoVer.Services.Converters;
 using AutoVer.Services.IO;
 
 namespace AutoVer.Services;
@@ -28,7 +29,9 @@ public class ConfigurationManager(
             
                 var content = await fileManager.ReadAllBytesAsync(configPath);
                 await using var stream = new MemoryStream(content);
-                var userConfiguration = await JsonSerializer.DeserializeAsync<UserConfiguration>(stream);
+                var options = new JsonSerializerOptions();
+                options.Converters.Add(new UserConfigurationConverter(fileManager, pathManager));
+                var userConfiguration = await JsonSerializer.DeserializeAsync<UserConfiguration>(stream, options);
 
                 return userConfiguration;
             }
@@ -38,7 +41,9 @@ public class ConfigurationManager(
                 if (!fileManager.Exists(pathManager.Combine(repositoryRoot, configPath)))
                     return null;
                 var fileContent = gitHandler.GetFileByTag(repositoryRoot, tagName, configPath);
-                var userConfiguration =  JsonSerializer.Deserialize<UserConfiguration>(fileContent);
+                var options = new JsonSerializerOptions();
+                options.Converters.Add(new UserConfigurationConverter(fileManager, pathManager));
+                var userConfiguration =  JsonSerializer.Deserialize<UserConfiguration>(fileContent, options);
                 
                 return userConfiguration;
             }
@@ -62,16 +67,6 @@ public class ConfigurationManager(
 
         if (userConfiguration?.Projects?.Any() ?? false)
         {
-            foreach (var project in userConfiguration.Projects)
-            {
-                project.ProjectDefinition = availableProjects
-                    .FirstOrDefault(x => 
-                    x.ProjectPath.Replace(pathManager.DirectorySeparatorChar, '/')
-                    .Equals(pathManager.Combine(projectPath, project.Path).Replace(pathManager.DirectorySeparatorChar, '/')));
-                if (project.ProjectDefinition is null)
-                    throw new ConfiguredProjectNotFoundException($"The configured project '{project.Path}' does not exist in the specified path '{projectPath}'.");
-            }
-
             userConfiguration.GitRoot = gitRoot;
             userConfiguration.PersistConfiguration = true;
         }
@@ -88,11 +83,11 @@ public class ConfigurationManager(
             
             foreach (var project in availableProjects)
             {
-                userConfiguration.Projects.Add(new UserConfiguration.Project
+                userConfiguration.Projects.Add(new ProjectContainer
                 {
                     Name = GetProjectName(project.ProjectPath),
                     Path = project.ProjectPath,
-                    ProjectDefinition = project,
+                    Projects = [new(project.ProjectPath, project)],
                     IncrementType = incrementType
                 });
             }
