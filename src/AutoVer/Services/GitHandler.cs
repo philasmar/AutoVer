@@ -53,9 +53,12 @@ public class GitHandler(
 
     public void StageChanges(UserConfiguration userConfiguration, string currentPath)
     {
-        using var gitRepository = new Repository(userConfiguration.GitRoot);
-        
-        LibGit2Sharp.Commands.Stage(gitRepository, currentPath);
+        var relativePath = Path.IsPathFullyQualified(currentPath) ? Path.GetRelativePath(userConfiguration.GitRoot, currentPath) : currentPath;
+        using (var gitRepository = new Repository(userConfiguration.GitRoot))
+        {
+            string fullPath = !currentPath.Equals("*") ? Path.Combine(gitRepository.Info.WorkingDirectory, relativePath) : "*";
+            LibGit2Sharp.Commands.Stage(gitRepository, fullPath);
+        }
     }
 
     public void CommitChanges(UserConfiguration userConfiguration, string commitMessage)

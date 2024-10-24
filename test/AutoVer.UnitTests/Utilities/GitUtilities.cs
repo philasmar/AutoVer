@@ -33,9 +33,11 @@ internal static class GitUtilities
 
     public static void StageChanges(string gitRepositoryPath, string currentPath)
     {
+        var relativePath = Path.IsPathFullyQualified(currentPath) ? Path.GetRelativePath(gitRepositoryPath, currentPath) : currentPath;
         using (var gitRepository = new Repository(gitRepositoryPath))
         {
-            LibGit2Sharp.Commands.Stage(gitRepository, currentPath);
+            string fullPath = !currentPath.Equals("*") ? Path.Combine(gitRepository.Info.WorkingDirectory, relativePath) : "*";
+            LibGit2Sharp.Commands.Stage(gitRepository, fullPath);
         }
     }
 

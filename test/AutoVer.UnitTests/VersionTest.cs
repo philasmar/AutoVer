@@ -1,8 +1,10 @@
 ﻿using AutoVer.Models;
 using AutoVer.UnitTests.Utilities;
+using LibGit2Sharp;
 
 namespace AutoVer.UnitTests;
 
+[Retry(3)]
 public class VersionTest
 {
     [Before(Test)]
@@ -10,7 +12,12 @@ public class VersionTest
     {
         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(tempDir);
-        context.ObjectBag["tempDir"] = tempDir;
+        Repository.Init(tempDir);
+        using (var repo = new Repository(tempDir))
+        {
+            context.ObjectBag["tempDir"] = repo.Info.WorkingDirectory;
+            IOUtilities.AddGitignore(repo.Info.WorkingDirectory);
+        }
     }
 
     [Test]

@@ -1,8 +1,6 @@
 ﻿using AutoVer.Constants;
 using AutoVer.Models;
-using LibGit2Sharp;
 using System.Diagnostics;
-using System.IO;
 using System.Xml;
 
 namespace AutoVer.UnitTests.Utilities;
@@ -85,11 +83,6 @@ $@"{{
 
         var xmlProjectFile = new XmlDocument { PreserveWhitespace = true };
         xmlProjectFile.LoadXml(await File.ReadAllTextAsync(projectPath));
-
-        var projectDefinition = new ProjectDefinition(
-            xmlProjectFile,
-            projectPath
-        );
 
         var versionTag = ProjectConstants.VersionTag;
         if (string.Equals(extension, ".nuspec"))
@@ -191,9 +184,50 @@ $@"{{
                     Console.WriteLine(error);
                 }
 
-                if (process.ExitCode == 0)
+                return process.ExitCode == 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred while running dotnet new: {ex.Message}");
+            return false;
+        }
+    }
+
+    public static bool AddGitignore(params string[] path)
+    {
+        var outputDir = Path.Combine(path);
+        if (!Directory.Exists(outputDir))
+            Directory.CreateDirectory(outputDir);
+        try
+        {
+            // Build the dotnet new command
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                Arguments = $"new gitignore",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = outputDir
+            };
+
+            using (var process = new Process())
+            {
+                process.StartInfo = processStartInfo;
+                process.Start();
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                Console.WriteLine("Output:");
+                Console.WriteLine(output);
+
+                if (!string.IsNullOrEmpty(error))
                 {
-                    var gitRepositoryPath = Repository.Init(path[0]);
+                    Console.WriteLine("Error:");
+                    Console.WriteLine(error);
                 }
 
                 return process.ExitCode == 0;
@@ -201,7 +235,7 @@ $@"{{
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred while running dotnet new: {ex.Message}");
+            Console.WriteLine($"An error occurred while running dotnet new gitignore: {ex.Message}");
             return false;
         }
     }
