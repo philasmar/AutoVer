@@ -1,3 +1,9 @@
+## Release 2024-10-24
+
+### AutoVer (0.0.24)
+* Add support for project containers, which allow multiple projects to be versioned as one
+* Add a unit test project that tests a combination of project configurations
+
 ## Release 2024-10-22
 
 ### AutoVer (0.0.23)
