@@ -1,5 +1,4 @@
-using AutoVer.Constants;
-using AutoVer.Exceptions;
+using AutoVer.Extensions;
 using AutoVer.Models;
 using AutoVer.Services;
 
@@ -32,11 +31,7 @@ public class VersionCommand(
         {
             foreach (var availableProject in userConfiguration.Projects)
             {
-                if (availableProject.ProjectDefinition is null)
-                    throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
-                
-                if (!projectHandler.ProjectHasVersionTag(availableProject.ProjectDefinition))
-                    throw new NoVersionTagException($"The project '{availableProject.Path}' does not have a {ProjectConstants.VersionTag} tag. Add a {ProjectConstants.VersionTag} tag and run the tool again.");
+                availableProject.EnsureProjectHasVersionTag();
             }
         }
 
@@ -59,8 +54,6 @@ public class VersionCommand(
         var projectsIncremented = false;
         foreach (var availableProject in userConfiguration.Projects)
         {
-            if (availableProject.ProjectDefinition is null)
-                throw new InvalidUserConfigurationException($"The configured project '{availableProject.Path}' is invalid.");
             if (!availableProject.IncrementType.Equals(IncrementType.None))
                 projectsIncremented = true;
             if (userConfiguration.UseSameVersionForAllProjects)
@@ -69,11 +62,18 @@ public class VersionCommand(
                 if (userConfiguration.ChangeFilesDetermineIncrementType &&
                     projectIncrements.ContainsKey(availableProject.Name))
                     projectIncrementType = projectIncrements[availableProject.Name];
-                projectHandler.UpdateVersion(
-                    availableProject.ProjectDefinition, 
-                    projectIncrementType, 
-                    availableProject.PrereleaseLabel,
-                    optionUseVersion ?? maxNextVersion?.ToString());
+                var localMaxVersion = versionIncrementer.GetNextMaxVersion(
+                    availableProject,
+                    userConfiguration.ChangeFilesDetermineIncrementType ? projectIncrements : null,
+                    incrementType);
+                foreach (var project in availableProject.Projects)
+                {
+                    projectHandler.UpdateVersion(
+                        project.ProjectDefinition, 
+                        projectIncrementType, 
+                        availableProject.PrereleaseLabel,
+                        optionUseVersion ?? maxNextVersion?.ToString() ?? localMaxVersion?.ToString());
+                }
             }
             else
             {
@@ -82,20 +82,45 @@ public class VersionCommand(
                     var projectIncrementType = IncrementType.None;
                     if (projectIncrements.ContainsKey(availableProject.Name))
                         projectIncrementType = projectIncrements[availableProject.Name];
-                    projectHandler.UpdateVersion(
-                        availableProject.ProjectDefinition, 
-                        projectIncrementType, 
-                        availableProject.PrereleaseLabel,
-                        optionUseVersion);
+                    if (projectIncrementType.Equals(IncrementType.None))
+                        continue;
+                    var localMaxVersion = versionIncrementer.GetNextMaxVersion(
+                        availableProject,
+                        userConfiguration.ChangeFilesDetermineIncrementType ? projectIncrements : null,
+                        incrementType);
+                    foreach (var project in availableProject.Projects)
+                    {
+                        projectHandler.UpdateVersion(
+                            project.ProjectDefinition, 
+                            projectIncrementType, 
+                            availableProject.PrereleaseLabel,
+                            optionUseVersion ?? localMaxVersion?.ToString());
+                    }
                 }
                 else
                 {
                     var projectIncrementType = availableProject.IncrementType ?? IncrementType.Patch;
-                    projectHandler.UpdateVersion(availableProject.ProjectDefinition, projectIncrementType, availableProject.PrereleaseLabel, optionUseVersion);
+                    var localMaxVersion = versionIncrementer.GetNextMaxVersion(
+                        availableProject,
+                        userConfiguration.ChangeFilesDetermineIncrementType ? projectIncrements : null,
+                        incrementType);
+                    if (projectIncrementType.Equals(IncrementType.None))
+                        continue;
+                    foreach (var project in availableProject.Projects)
+                    {
+                        projectHandler.UpdateVersion(
+                            project.ProjectDefinition, 
+                            projectIncrementType, 
+                            availableProject.PrereleaseLabel, 
+                            optionUseVersion ?? localMaxVersion?.ToString());
+                    }
                 }
             }
-            
-            gitHandler.StageChanges(userConfiguration, availableProject.Path);
+
+            foreach (var project in availableProject.Projects)
+            {
+                gitHandler.StageChanges(userConfiguration, project.Path);
+            }
         }
 
         // When done, reset the config file if the user had one

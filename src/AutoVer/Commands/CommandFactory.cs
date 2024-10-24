@@ -3,6 +3,7 @@ using AutoVer.Constants;
 using AutoVer.Extensions;
 using AutoVer.Models;
 using AutoVer.Services;
+using AutoVer.Services.IO;
 
 namespace AutoVer.Commands;
 
@@ -19,7 +20,10 @@ public class CommandFactory(
     IChangelogHandler changelogHandler,
     IChangeFileHandler changeFileHandler,
     IVersionHandler versionHandler,
-    IVersionIncrementer versionIncrementer
+    IVersionIncrementer versionIncrementer,
+    IFileManager fileManager,
+    IDirectoryManager directoryManager,
+    IPathManager pathManager
     ) : ICommandFactory
 {
     private static readonly Option<string> OptionProjectPath = new("--project-path", Directory.GetCurrentDirectory, "Path to the project");
@@ -78,6 +82,10 @@ public class CommandFactory(
                 var optionNoTag = context.ParseResult.GetValueForOption(noTagOption);
                 var optionUseVersion = context.ParseResult.GetValueForOption(useVersionOption);
                 
+                fileManager.SetCurrentDirectory(optionProjectPath);
+                directoryManager.SetCurrentDirectory(optionProjectPath);
+                pathManager.SetCurrentDirectory(optionProjectPath);
+
                 var command = new VersionCommand(
                     projectHandler, 
                     gitHandler, 
@@ -138,7 +146,11 @@ public class CommandFactory(
                 var optionOutputToConsole = context.ParseResult.GetValueForOption(outputToConsoleOption);
                 var optionReleaseName = context.ParseResult.GetValueForOption(releaseNameOption);
                 var optionTagName = context.ParseResult.GetValueForOption(tagNameOption);
-                
+
+                fileManager.SetCurrentDirectory(optionProjectPath);
+                directoryManager.SetCurrentDirectory(optionProjectPath);
+                pathManager.SetCurrentDirectory(optionProjectPath);
+
                 var command = new ChangelogCommand(configurationManager, gitHandler, changelogHandler, toolInteractiveService, versionHandler);
                 await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionOutputToConsole, optionReleaseName, optionTagName);
                     
@@ -190,7 +202,11 @@ public class CommandFactory(
                 var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
                 var optionProjectName = context.ParseResult.GetValueForOption(projectNameOption);
                 var optionMessage = context.ParseResult.GetValueForOption(messageOption);
-                
+
+                fileManager.SetCurrentDirectory(optionProjectPath);
+                directoryManager.SetCurrentDirectory(optionProjectPath);
+                pathManager.SetCurrentDirectory(optionProjectPath);
+
                 var command = new ChangeCommand(configurationManager, toolInteractiveService, changeFileHandler);
                 await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionProjectName, optionMessage);
                     

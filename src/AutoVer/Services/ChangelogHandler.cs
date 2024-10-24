@@ -1,5 +1,4 @@
 using AutoVer.Constants;
-using AutoVer.Exceptions;
 using AutoVer.Models;
 using AutoVer.Services.IO;
 
@@ -112,13 +111,11 @@ public class ChangelogHandler(
                     else
                     {
                         var configuredProject = configuration.Projects.First(x => x.Name.Equals(project.Name));
-                        if (configuredProject.ProjectDefinition is null)
-                            throw new InvalidProjectException($"The project '{configuredProject.Path}' is invalid.");
                         
                         var changelogCategory = new ChangelogCategory
                         {
                             Name = configuredProject.Name,
-                            Version = configuredProject.ProjectDefinition?.Version
+                            Version = configuredProject.Projects.First().ProjectDefinition.Version
                         };
 
                         if (!configuration.UseSameVersionForAllProjects)
