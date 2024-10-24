@@ -72,6 +72,39 @@ public class ProjectHandler(
         return projectDefinitions;
     }
 
+    public async Task<ProjectDefinition> GetProjectDefinition(string projectPath)
+    {
+        var normalizedPath = projectPath.Replace('\\', pathManager.DirectorySeparatorChar).Replace('/', pathManager.DirectorySeparatorChar);
+        if (!fileManager.Exists(normalizedPath))
+            throw new Exception($"Failed to find a valid .csproj or .nuspec file at path {normalizedPath}");
+
+        var extension = pathManager.GetExtension(normalizedPath);
+        if (!string.Equals(extension, ".csproj") && !string.Equals(extension, ".nuspec"))
+        {
+            var errorMessage = $"Invalid project path {normalizedPath}. The project path must point to a .csproj or .nuspec file";
+            throw new Exception(errorMessage);
+        }
+            
+        var xmlProjectFile = new XmlDocument{ PreserveWhitespace = true };
+        xmlProjectFile.LoadXml(await fileManager.ReadAllTextAsync(normalizedPath));
+            
+        var projectDefinition =  new ProjectDefinition(
+            xmlProjectFile,
+            pathManager.GetFullPath(normalizedPath)
+        );
+
+        var versionTag = ProjectConstants.VersionTag;
+        if (string.Equals(extension, ".nuspec"))
+            versionTag = ProjectConstants.NuspecVersionTag;
+        var version = xmlProjectFile.GetElementsByTagName(versionTag);
+        if (version.Count > 0)
+        {
+            projectDefinition.Version = version[0]?.InnerText;
+        }
+            
+        return projectDefinition;
+    }
+
     public void UpdateVersion(ProjectDefinition projectDefinition, IncrementType incrementType, string? prereleaseLabel = null, string? overrideVersion = null)
     {
         var extension = pathManager.GetExtension(projectDefinition.ProjectPath);
@@ -101,15 +134,5 @@ public class ProjectHandler(
         }
         
         projectDefinition.Contents.Save(projectDefinition.ProjectPath);
-    }
-
-    public bool ProjectHasVersionTag(ProjectDefinition projectDefinition)
-    {
-        var extension = pathManager.GetExtension(projectDefinition.ProjectPath);
-        var versionTag = ProjectConstants.VersionTag;
-        if (string.Equals(extension, ".nuspec"))
-            versionTag = ProjectConstants.NuspecVersionTag;
-        var versionTagList = projectDefinition.Contents.GetElementsByTagName(versionTag).Cast<XmlNode>().ToList();
-        return versionTagList.Any();
     }
 }
