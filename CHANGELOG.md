@@ -1,3 +1,8 @@
+## Release 2025-04-01
+
+### AutoVer (0.0.25)
+* Fixed an issue when --use-version has the same version as the csproj and no version update is made. Previously, this would error out with a non-zero exit code.
+
 ## Release 2024-10-24
 
 ### AutoVer (0.0.24)
