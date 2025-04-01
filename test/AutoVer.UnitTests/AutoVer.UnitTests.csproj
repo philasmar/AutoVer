@@ -8,8 +8,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="LibGit2Sharp" Version="0.30.0" />
-      <PackageReference Include="TUnit" Version="0.1.1099" />
+      <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
+      <PackageReference Include="TUnit" Version="0.19.32" />
     </ItemGroup>
 
     <ItemGroup>
