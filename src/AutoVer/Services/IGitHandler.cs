@@ -14,4 +14,5 @@ public interface IGitHandler
     List<ConventionalCommit> GetVersionCommits(UserConfiguration userConfiguration, string? lastVersionTag = null);
     string GetFileByTag(string gitRoot, string tagName, string filePath);
     List<GitFile> GetFolderByTag(string gitRoot, string tagName, string folderPath);
+    bool HasStagedChanges(UserConfiguration userConfiguration);
 }
