@@ -61,6 +61,17 @@ public class GitHandler(
         }
     }
 
+    public bool HasStagedChanges(UserConfiguration userConfiguration)
+    {
+        using (var gitRepository = new Repository(userConfiguration.GitRoot))
+        {
+            var headTree = gitRepository.Head.Tip.Tree;
+            var changes = gitRepository.Diff.Compare<TreeChanges>(headTree, DiffTargets.Index);
+
+            return changes.Count > 0;
+        }
+    }
+
     public void CommitChanges(UserConfiguration userConfiguration, string commitMessage)
     {
         using var gitRepository = new Repository(userConfiguration.GitRoot);

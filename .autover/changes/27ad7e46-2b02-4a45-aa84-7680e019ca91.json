@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Fixed an issue when --use-version has the same version as the csproj and no version update is made. Previously, this would error out with a non-zero exit code."
+      ]
+    }
+  ]
+}

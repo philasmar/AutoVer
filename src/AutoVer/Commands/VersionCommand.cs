@@ -140,7 +140,8 @@ public class VersionCommand(
 
         if (!optionNoCommit)
         {
-            gitHandler.CommitChanges(userConfiguration, versionHandler.GetNewReleaseName(userConfiguration));
+            if (gitHandler.HasStagedChanges(userConfiguration))
+                gitHandler.CommitChanges(userConfiguration, versionHandler.GetNewReleaseName(userConfiguration));
 
             if (!optionNoTag)
             {
