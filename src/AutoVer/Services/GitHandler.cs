@@ -32,7 +32,12 @@ public class GitHandler(
         
         while (currentPath != null)
         {
-            if (directoryManager.GetDirectories(currentPath, ".git").Any())
+            // A standard repository has `.git` as a directory. A linked git worktree
+            // has `.git` as a file containing a `gitdir:` pointer to the actual git
+            // directory. Treat both as the source-control root so we don't walk past
+            // the worktree and find the main repository's `.git` directory instead.
+            if (directoryManager.GetDirectories(currentPath, ".git").Any() ||
+                fileManager.Exists(Path.Combine(currentPath, ".git")))
             {
                 var sourceControlRootDirectory = directoryManager.GetDirectoryInfo(currentPath).FullName;
                 _gitRootCache[currentPath] = sourceControlRootDirectory;
