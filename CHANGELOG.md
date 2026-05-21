@@ -1,3 +1,8 @@
+## Release 2026-05-21
+
+### AutoVer (0.0.26)
+* Detect linked git worktrees so change files are written to the correct repository root.
+
 ## Release 2025-04-01
 
 ### AutoVer (0.0.25)
