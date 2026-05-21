@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Detect linked git worktrees so change files are written to the correct repository root."
+      ]
+    }
+  ]
+}
