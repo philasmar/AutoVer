@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AutoVer/AutoVer.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/AutoVer.UnitTests/AutoVer.UnitTests.csproj" />
+    <Project Path="test/AutoVer.IntegrationTests/AutoVer.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

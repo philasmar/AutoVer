@@ -1,5 +1,6 @@
 ﻿using AutoVer.Models;
 using AutoVer.Services.IO;
+using AutoVer.Services.ProjectFiles;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -7,7 +8,8 @@ namespace AutoVer.Services.Converters;
 
 public class UserConfigurationConverter(
     IFileManager fileManager,
-    IPathManager pathManager) : JsonConverter<UserConfiguration>
+    IPathManager pathManager,
+    IProjectFileHandlerResolver projectFileHandlerResolver) : JsonConverter<UserConfiguration>
 {
     public override UserConfiguration? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
@@ -24,10 +26,10 @@ public class UserConfigurationConverter(
             {
                 foreach (var project in container.Projects)
                 {
-                    project.InjectDependency(fileManager, pathManager);
+                    project.InjectDependency(fileManager, pathManager, projectFileHandlerResolver);
                     project.OnDeserialized();
                 }
-                container.InjectDependency(fileManager, pathManager);
+                container.InjectDependency(fileManager, pathManager, projectFileHandlerResolver);
                 container.OnDeserialized();
             }
         }

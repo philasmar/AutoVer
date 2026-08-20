@@ -23,6 +23,7 @@ public class App(
             args = new[] { "-h" };
         }
 
-        return await commandFactory.BuildRootCommand().InvokeAsync(args);
+        var parseResult = commandFactory.BuildRootCommand().Parse(args);
+        return await parseResult.InvokeAsync();
     }
 }
