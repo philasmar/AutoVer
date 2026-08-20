@@ -98,7 +98,10 @@ public class ChangeFileHandler(
         }
         else
         {
-            var changeFilePaths = directoryManager.GetFiles(changeFilesPath, "*.json").ToList();
+            // Use the absolute path computed above, not the relative changeFilesPath — this
+            // must not depend on the shared IDirectoryManager.CurrentDirectory already being
+            // pointed at repositoryRoot by whatever the caller happened to run first.
+            var changeFilePaths = directoryManager.GetFiles(absoluteChangeFilesPath, "*.json").ToList();
 
             foreach (var changeFilePath in changeFilePaths)
             {

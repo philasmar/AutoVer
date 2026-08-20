@@ -12,7 +12,7 @@ public interface IGitHandler
     void AddTag(UserConfiguration userConfiguration, string tagName);
     List<string> GetTags(string gitRoot);
     List<ConventionalCommit> GetVersionCommits(UserConfiguration userConfiguration, string? lastVersionTag = null);
-    string GetFileByTag(string gitRoot, string tagName, string filePath);
+    string? GetFileByTag(string gitRoot, string tagName, string filePath);
     List<GitFile> GetFolderByTag(string gitRoot, string tagName, string folderPath);
     bool HasStagedChanges(UserConfiguration userConfiguration);
 }

@@ -4,18 +4,25 @@ using LibGit2Sharp;
 
 namespace AutoVer.UnitTests;
 
+// Constrained against every other class that touches LibGit2Sharp directly (shared "git" key) -
+// libgit2's native library races on its lazy first-time initialization when many Repository
+// objects are opened concurrently across threads, causing sporadic, different-test-each-time
+// failures under CI's higher parallelism.
 [Retry(3)]
+[NotInParallel("git")]
 public class VersionTest
 {
+    private string _tempDir = string.Empty;
+
     [Before(Test)]
-    public void Before(TestContext context)
+    public void Before()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(tempDir);
         Repository.Init(tempDir);
         using (var repo = new Repository(tempDir))
         {
-            context.ObjectBag["tempDir"] = repo.Info.WorkingDirectory;
+            _tempDir = repo.Info.WorkingDirectory;
             IOUtilities.AddGitignore(repo.Info.WorkingDirectory);
         }
     }
@@ -23,7 +30,7 @@ public class VersionTest
     [Test]
     public async Task CsProj_UseChangeFiles()
     {
-        string tempDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString() ?? throw new Exception("Temp directory is null");
+        string tempDir = _tempDir;
 
         await Assert.That(await IOUtilities.CreateProject(tempDir, "src", "Project1")).IsTrue();
         await IOUtilities.SetProjectVersion(Path.Combine(tempDir, "src", "Project1", "Project1.csproj"), "1.0.0");
@@ -75,7 +82,7 @@ $@"{{
     [Test]
     public async Task CsProj_UseChangeFiles_VersionNoChangedFiles()
     {
-        string tempDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString() ?? throw new Exception("Temp directory is null");
+        string tempDir = _tempDir;
 
         await Assert.That(await IOUtilities.CreateProject(tempDir, "src", "Project1")).IsTrue();
         await IOUtilities.SetProjectVersion(Path.Combine(tempDir, "src", "Project1", "Project1.csproj"), "1.0.0");
@@ -126,7 +133,7 @@ $@"{{
     [Test]
     public async Task CsProj_DontUseChangeFiles_DefaultIncrement()
     {
-        string tempDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString() ?? throw new Exception("Temp directory is null");
+        string tempDir = _tempDir;
 
         await Assert.That(await IOUtilities.CreateProject(tempDir, "src", "Project1")).IsTrue();
         await IOUtilities.SetProjectVersion(Path.Combine(tempDir, "src", "Project1", "Project1.csproj"), "1.0.0");
@@ -183,7 +190,7 @@ $@"{{
     [Arguments(IncrementType.None)]
     public async Task CsProj_DontUseChangeFiles_CustomIncrement(IncrementType incrementType)
     {
-        string tempDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString() ?? throw new Exception("Temp directory is null");
+        string tempDir = _tempDir;
 
         await Assert.That(await IOUtilities.CreateProject(tempDir, "src", "Project1")).IsTrue();
         await IOUtilities.SetProjectVersion(Path.Combine(tempDir, "src", "Project1", "Project1.csproj"), "1.0.0");
@@ -236,7 +243,7 @@ $@"{{
     [Test]
     public async Task TwoCsProj_UseChangeFiles_AllProjectsHaveChanges()
     {
-        string tempDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString() ?? throw new Exception("Temp directory is null");
+        string tempDir = _tempDir;
 
         await Assert.That(await IOUtilities.CreateProject(tempDir, "src", "Project1")).IsTrue();
         await IOUtilities.SetProjectVersion(Path.Combine(tempDir, "src", "Project1", "Project1.csproj"), "1.0.0");
@@ -301,7 +308,7 @@ $@"{{
     [Test]
     public async Task TwoCsProj_UseChangeFiles_OneProjectHasChanges()
     {
-        string tempDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString() ?? throw new Exception("Temp directory is null");
+        string tempDir = _tempDir;
 
         await Assert.That(await IOUtilities.CreateProject(tempDir, "src", "Project1")).IsTrue();
         await IOUtilities.SetProjectVersion(Path.Combine(tempDir, "src", "Project1", "Project1.csproj"), "1.0.0");
@@ -364,7 +371,7 @@ $@"{{
     [Test]
     public async Task TwoCsProj_DontUseChangeFiles_AllProjectsHaveChanges()
     {
-        string tempDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString() ?? throw new Exception("Temp directory is null");
+        string tempDir = _tempDir;
 
         await Assert.That(await IOUtilities.CreateProject(tempDir, "src", "Project1")).IsTrue();
         await IOUtilities.SetProjectVersion(Path.Combine(tempDir, "src", "Project1", "Project1.csproj"), "1.0.0");
@@ -431,7 +438,7 @@ $@"{{
     [Arguments(IncrementType.None)]
     public async Task TwoCsProj_DontUseChangeFiles_AllProjectsHaveChanges_CustomIncrement(IncrementType incrementType)
     {
-        string tempDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString() ?? throw new Exception("Temp directory is null");
+        string tempDir = _tempDir;
 
         await Assert.That(await IOUtilities.CreateProject(tempDir, "src", "Project1")).IsTrue();
         await IOUtilities.SetProjectVersion(Path.Combine(tempDir, "src", "Project1", "Project1.csproj"), "1.0.0");
@@ -496,7 +503,7 @@ $@"{{
     [Test]
     public async Task TwoCsProj_OneContainer_UseChangeFiles_OneProjectHasChanges()
     {
-        string tempDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString() ?? throw new Exception("Temp directory is null");
+        string tempDir = _tempDir;
 
         await Assert.That(await IOUtilities.CreateProject(tempDir, "src", "Project1")).IsTrue();
         await IOUtilities.SetProjectVersion(Path.Combine(tempDir, "src", "Project1", "Project1.csproj"), "1.0.0");
@@ -558,7 +565,7 @@ $@"{{
     [Test]
     public async Task TwoCsProj_UseSameVersionForAllProjects_OneProjectHasChanges_ProjectsHaveSameVersion()
     {
-        string tempDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString() ?? throw new Exception("Temp directory is null");
+        string tempDir = _tempDir;
 
         await Assert.That(await IOUtilities.CreateProject(tempDir, "src", "Project1")).IsTrue();
         await IOUtilities.SetProjectVersion(Path.Combine(tempDir, "src", "Project1", "Project1.csproj"), "1.0.0");
@@ -620,7 +627,7 @@ $@"{{
     [Test]
     public async Task TwoCsProj_UseSameVersionForAllProjects_OneProjectHasChanges_ProjectsHaveDifferentVersions()
     {
-        string tempDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString() ?? throw new Exception("Temp directory is null");
+        string tempDir = _tempDir;
 
         await Assert.That(await IOUtilities.CreateProject(tempDir, "src", "Project1")).IsTrue();
         await IOUtilities.SetProjectVersion(Path.Combine(tempDir, "src", "Project1", "Project1.csproj"), "1.0.0");
@@ -684,11 +691,10 @@ $@"{{
     {
         try
         {
-            var tempDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString();
-            if (!string.IsNullOrEmpty(tempDir) && Directory.Exists(tempDir))
+            if (!string.IsNullOrEmpty(_tempDir) && Directory.Exists(_tempDir))
             {
-                IOUtilities.RemoveReadOnly(tempDir);
-                Directory.Delete(tempDir, true);
+                IOUtilities.RemoveReadOnly(_tempDir);
+                Directory.Delete(_tempDir, true);
             }
         }
         catch (Exception ex)

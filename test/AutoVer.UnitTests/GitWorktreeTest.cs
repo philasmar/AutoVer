@@ -4,18 +4,22 @@ using LibGit2Sharp;
 
 namespace AutoVer.UnitTests;
 
+// See VersionTest.cs for why this shares the "git" NotInParallel key.
 [Retry(3)]
+[NotInParallel("git")]
 public class GitWorktreeTest
 {
+    private string _tempDir = string.Empty;
+
     [Before(Test)]
-    public void Before(TestContext context)
+    public void Before()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
         Directory.CreateDirectory(tempDir);
         Repository.Init(tempDir);
         using (var repo = new Repository(tempDir))
         {
-            context.ObjectBag["tempDir"] = repo.Info.WorkingDirectory;
+            _tempDir = repo.Info.WorkingDirectory;
             IOUtilities.AddGitignore(repo.Info.WorkingDirectory);
         }
     }
@@ -23,8 +27,7 @@ public class GitWorktreeTest
     [Test]
     public async Task ChangeCommand_FromLinkedWorktree_WritesChangeFileInsideWorktree()
     {
-        string mainRepoDir = TestContext.Current?.ObjectBag["tempDir"]?.ToString()
-            ?? throw new Exception("Temp directory is null");
+        string mainRepoDir = _tempDir;
 
         // Set up a project in the main repo and commit it so we have something to branch from.
         await Assert.That(await IOUtilities.CreateProject(mainRepoDir, "src", "Project1")).IsTrue();

@@ -1,26 +1,11 @@
 namespace AutoVer.Services.IO;
 
-public class PathManager : IPathManager
+public class PathManager(ICurrentDirectoryContext currentDirectoryContext) : IPathManager
 {
-    private string CurrentDirectory = Directory.GetCurrentDirectory();
-
-    public void SetCurrentDirectory(string? currentDirectory)
-    {
-        CurrentDirectory = currentDirectory ?? Directory.GetCurrentDirectory();
-    }
-
     public char DirectorySeparatorChar => Path.DirectorySeparatorChar;
 
-    public string GetFullPath(string path)
-    {
-        if (Path.IsPathFullyQualified(path))
-            return Path.GetFullPath(path);
-        else
-        {
-            var fullPath = Path.GetFullPath(path, CurrentDirectory);
-            return Path.GetFullPath(fullPath);
-        }
-    }
+    public string GetFullPath(string path) =>
+        Path.IsPathFullyQualified(path) ? Path.GetFullPath(path) : Path.GetFullPath(path, currentDirectoryContext.CurrentDirectory);
 
     public string Combine(params string[] paths) => Path.Combine(paths);
 

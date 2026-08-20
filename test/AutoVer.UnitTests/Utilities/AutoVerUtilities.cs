@@ -12,4 +12,12 @@ internal static class AutoVerUtilities
         var serviceProvider = serviceCollection.BuildServiceProvider();
         return serviceProvider.GetRequiredService<App>();
     }
+
+    public static T GetService<T>() where T : notnull
+    {
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddCustomServices();
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+        return serviceProvider.GetRequiredService<T>();
+    }
 }

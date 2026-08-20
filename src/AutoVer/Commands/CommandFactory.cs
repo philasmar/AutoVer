@@ -21,31 +21,68 @@ public class CommandFactory(
     IChangeFileHandler changeFileHandler,
     IVersionHandler versionHandler,
     IVersionIncrementer versionIncrementer,
-    IFileManager fileManager,
-    IDirectoryManager directoryManager,
-    IPathManager pathManager
+    ICurrentDirectoryContext currentDirectoryContext
     ) : ICommandFactory
 {
-    private static readonly Option<string> OptionProjectPath = new("--project-path", Directory.GetCurrentDirectory, "Path to the project");
-    private static readonly Option<string> OptionIncrementType = new("--increment-type", IncrementType.Patch.ToString, "Increment type. Available values: Major, Minor, Patch.");
-    private static readonly object RootCommandLock = new();
-    private static readonly object ChildCommandLock = new();
-    
+    private static readonly Option<string> OptionProjectPath = new("--project-path")
+    {
+        Description = "Path to the project",
+        DefaultValueFactory = _ => Directory.GetCurrentDirectory()
+    };
+    private static readonly Option<string> OptionIncrementType = new("--increment-type")
+    {
+        Description = "Increment type. Available values: Major, Minor, Patch.",
+        DefaultValueFactory = _ => IncrementType.Patch.ToString()
+    };
+    private static readonly Option<bool> OptionVerbose = new("--verbose")
+    {
+        Description = "Show full exception details, including inner exceptions, when a command fails."
+    };
+    // Resolves --project-path to an absolute path once, at the entry point, and returns that
+    // resolved value for callers to use from here on. Every downstream consumer (GitHandler,
+    // ProjectHandler, ConfigurationManager, ...) assumes it's always working with absolute
+    // paths; forwarding the raw (possibly relative) CLI value instead would get re-resolved
+    // a second time against the current directory this same call just set, double-applying any
+    // relative segment (e.g. "proj" becoming ".../proj/proj").
+    private string ResolveProjectPath(string? projectPath)
+    {
+        currentDirectoryContext.SetCurrentDirectory(projectPath);
+        return currentDirectoryContext.CurrentDirectory;
+    }
+
+    private async Task<int> ExecuteCommandAsync(ParseResult parseResult, Func<Task> action)
+    {
+        try
+        {
+            await action();
+
+            return CommandReturnCodes.Success;
+        }
+        catch (Exception e) when (e.IsExpectedException())
+        {
+            toolInteractiveService.WriteErrorLine(string.Empty);
+            toolInteractiveService.WriteErrorLine(parseResult.GetValue(OptionVerbose) ? e.PrettyPrint() : e.Message);
+
+            return CommandReturnCodes.UserError;
+        }
+        catch (Exception e)
+        {
+            // This is a bug
+            toolInteractiveService.WriteErrorLine(
+                "Unhandled exception.\r\nThis is a bug.\r\nPlease copy the stack trace below and file a bug at https://github.com/philasmar/autover. " +
+                e.PrettyPrint());
+
+            return CommandReturnCodes.UnhandledException;
+        }
+    }
+
     public Command BuildRootCommand()
     {
-        // Name is important to set here to show correctly in the CLI usage help.
-        var rootCommand = new RootCommand
-        {
-            Name = "AutoVer",
-            Description = "An automatic versioning tool for .NET"
-        };
-        
-        lock(RootCommandLock)
-        {
-            rootCommand.Add(BuildVersionCommand());
-            rootCommand.Add(BuildChangelogCommand());
-            rootCommand.Add(BuildChangeCommand());
-        }
+        var rootCommand = new RootCommand("An automatic versioning tool for .NET");
+
+        rootCommand.Add(BuildVersionCommand());
+        rootCommand.Add(BuildChangelogCommand());
+        rootCommand.Add(BuildChangeCommand());
 
         return rootCommand;
     }
@@ -55,65 +92,41 @@ public class CommandFactory(
         var versionCommand = new Command(
             "version",
             "Perform automated versioning of the specified project(s).");
-    
-        Option<bool> skipVersionTagCheckOption = new(new[] { "--skip-version-tag-check" }, $"Skip version tag check and increment projects even if some don't have a {ProjectConstants.VersionTag} tag.");
-        Option<bool> noCommitOption = new(new[] { "--no-commit" }, $"Do not commit changes after versioning.");
-        Option<bool> noTagOption = new(new[] { "--no-tag" }, $"Do not add a Git Tag after versioning.");
-        Option<string> useVersionOption = new("--use-version", "Use a specific version for all projects.");
 
-        lock (ChildCommandLock)
+        Option<bool> skipVersionTagCheckOption = new("--skip-version-tag-check")
         {
-            versionCommand.Add(OptionProjectPath);
-            versionCommand.Add(OptionIncrementType);
-            versionCommand.Add(skipVersionTagCheckOption);
-            versionCommand.Add(noCommitOption);
-            versionCommand.Add(noTagOption);
-            versionCommand.Add(useVersionOption);
-        }
+            Description = $"Skip version tag check and increment projects even if some don't have a {ProjectConstants.VersionTag} tag."
+        };
+        Option<bool> noCommitOption = new("--no-commit") { Description = "Do not commit changes after versioning." };
+        Option<bool> noTagOption = new("--no-tag") { Description = "Do not add a Git Tag after versioning." };
+        Option<string> useVersionOption = new("--use-version") { Description = "Use a specific version for all projects." };
 
-        versionCommand.SetHandler(async (context) =>
+        versionCommand.Add(OptionProjectPath);
+        versionCommand.Add(OptionIncrementType);
+        versionCommand.Add(skipVersionTagCheckOption);
+        versionCommand.Add(noCommitOption);
+        versionCommand.Add(noTagOption);
+        versionCommand.Add(useVersionOption);
+        versionCommand.Add(OptionVerbose);
+
+        versionCommand.SetAction((parseResult, cancellationToken) => ExecuteCommandAsync(parseResult, async () =>
         {
-            try
-            {
-                var optionProjectPath = context.ParseResult.GetValueForOption(OptionProjectPath);
-                var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
-                var optionSkipVersionTagCheck = context.ParseResult.GetValueForOption(skipVersionTagCheckOption);
-                var optionNoCommit = context.ParseResult.GetValueForOption(noCommitOption);
-                var optionNoTag = context.ParseResult.GetValueForOption(noTagOption);
-                var optionUseVersion = context.ParseResult.GetValueForOption(useVersionOption);
-                
-                fileManager.SetCurrentDirectory(optionProjectPath);
-                directoryManager.SetCurrentDirectory(optionProjectPath);
-                pathManager.SetCurrentDirectory(optionProjectPath);
+            var optionProjectPath = ResolveProjectPath(parseResult.GetValue(OptionProjectPath));
+            var optionIncrementType = parseResult.GetValue(OptionIncrementType);
+            var optionSkipVersionTagCheck = parseResult.GetValue(skipVersionTagCheckOption);
+            var optionNoCommit = parseResult.GetValue(noCommitOption);
+            var optionNoTag = parseResult.GetValue(noTagOption);
+            var optionUseVersion = parseResult.GetValue(useVersionOption);
 
-                var command = new VersionCommand(
-                    projectHandler, 
-                    gitHandler, 
-                    configurationManager, 
-                    changeFileHandler, 
-                    versionHandler,
-                    versionIncrementer);
-                await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck, optionNoCommit, optionNoTag, optionUseVersion);
-                    
-                context.ExitCode = CommandReturnCodes.Success;
-            }
-            catch (Exception e) when (e.IsExpectedException())
-            {
-                toolInteractiveService.WriteErrorLine(string.Empty);
-                toolInteractiveService.WriteErrorLine(e.Message);
-                    
-                context.ExitCode = CommandReturnCodes.UserError;
-            }
-            catch (Exception e)
-            {
-                // This is a bug
-                toolInteractiveService.WriteErrorLine(
-                    "Unhandled exception.\r\nThis is a bug.\r\nPlease copy the stack trace below and file a bug at https://github.com/philasmar/autover. " +
-                    e.PrettyPrint());
-                    
-                context.ExitCode = CommandReturnCodes.UnhandledException;
-            }
-        });
+            var command = new VersionCommand(
+                projectHandler,
+                gitHandler,
+                configurationManager,
+                changeFileHandler,
+                versionHandler,
+                versionIncrementer);
+            await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck, optionNoCommit, optionNoTag, optionUseVersion);
+        }));
 
         return versionCommand;
     }
@@ -123,56 +136,29 @@ public class CommandFactory(
         var changelogCommand = new Command(
             "changelog",
             "Create a changelog for the versioned repository.");
-    
-        Option<bool> outputToConsoleOption = new(new[] { "--output-to-console" }, $"Output the changelog to the console.");
-        Option<bool> releaseNameOption = new(new[] { "--release-name" }, $"Gets the name of the current release.");
-        Option<bool> tagNameOption = new(new[] { "--tag-name" }, $"Gets the name of the current GitHub tag.");
 
-        lock (ChildCommandLock)
+        Option<bool> outputToConsoleOption = new("--output-to-console") { Description = "Output the changelog to the console." };
+        Option<bool> releaseNameOption = new("--release-name") { Description = "Gets the name of the current release." };
+        Option<bool> tagNameOption = new("--tag-name") { Description = "Gets the name of the current GitHub tag." };
+
+        changelogCommand.Add(OptionProjectPath);
+        changelogCommand.Add(OptionIncrementType);
+        changelogCommand.Add(outputToConsoleOption);
+        changelogCommand.Add(releaseNameOption);
+        changelogCommand.Add(tagNameOption);
+        changelogCommand.Add(OptionVerbose);
+
+        changelogCommand.SetAction((parseResult, cancellationToken) => ExecuteCommandAsync(parseResult, async () =>
         {
-            changelogCommand.Add(OptionProjectPath);
-            changelogCommand.Add(OptionIncrementType);
-            changelogCommand.Add(outputToConsoleOption);
-            changelogCommand.Add(releaseNameOption);
-            changelogCommand.Add(tagNameOption);
-        }
+            var optionProjectPath = ResolveProjectPath(parseResult.GetValue(OptionProjectPath));
+            var optionIncrementType = parseResult.GetValue(OptionIncrementType);
+            var optionOutputToConsole = parseResult.GetValue(outputToConsoleOption);
+            var optionReleaseName = parseResult.GetValue(releaseNameOption);
+            var optionTagName = parseResult.GetValue(tagNameOption);
 
-        changelogCommand.SetHandler(async (context) =>
-        {
-            try
-            {
-                var optionProjectPath = context.ParseResult.GetValueForOption(OptionProjectPath);
-                var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
-                var optionOutputToConsole = context.ParseResult.GetValueForOption(outputToConsoleOption);
-                var optionReleaseName = context.ParseResult.GetValueForOption(releaseNameOption);
-                var optionTagName = context.ParseResult.GetValueForOption(tagNameOption);
-
-                fileManager.SetCurrentDirectory(optionProjectPath);
-                directoryManager.SetCurrentDirectory(optionProjectPath);
-                pathManager.SetCurrentDirectory(optionProjectPath);
-
-                var command = new ChangelogCommand(configurationManager, gitHandler, changelogHandler, toolInteractiveService, versionHandler);
-                await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionOutputToConsole, optionReleaseName, optionTagName);
-                    
-                context.ExitCode = CommandReturnCodes.Success;
-            }
-            catch (Exception e) when (e.IsExpectedException())
-            {
-                toolInteractiveService.WriteErrorLine(string.Empty);
-                toolInteractiveService.WriteErrorLine(e.Message);
-                    
-                context.ExitCode = CommandReturnCodes.UserError;
-            }
-            catch (Exception e)
-            {
-                // This is a bug
-                toolInteractiveService.WriteErrorLine(
-                    "Unhandled exception.\r\nThis is a bug.\r\nPlease copy the stack trace below and file a bug at https://github.com/philasmar/autover. " +
-                    e.PrettyPrint());
-                    
-                context.ExitCode = CommandReturnCodes.UnhandledException;
-            }
-        });
+            var command = new ChangelogCommand(configurationManager, gitHandler, changelogHandler, toolInteractiveService, versionHandler);
+            await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionOutputToConsole, optionReleaseName, optionTagName);
+        }));
 
         return changelogCommand;
     }
@@ -182,53 +168,26 @@ public class CommandFactory(
         var changeCommand = new Command(
             "change",
             "Create a change file that contains information on the current changes.");
-        
-        Option<string> projectNameOption = new(["--project-name"], "The name of the project to add a change to.");
-        Option<string> messageOption = new(["-m", "--message"], "The change message for a given project.");
-        
-        lock (ChildCommandLock)
-        {
-            changeCommand.Add(OptionProjectPath);
-            changeCommand.Add(OptionIncrementType);
-            changeCommand.Add(projectNameOption);
-            changeCommand.Add(messageOption);
-        }
-        
-        changeCommand.SetHandler(async (context) =>
-        {
-            try
-            {
-                var optionProjectPath = context.ParseResult.GetValueForOption(OptionProjectPath);
-                var optionIncrementType = context.ParseResult.GetValueForOption(OptionIncrementType);
-                var optionProjectName = context.ParseResult.GetValueForOption(projectNameOption);
-                var optionMessage = context.ParseResult.GetValueForOption(messageOption);
 
-                fileManager.SetCurrentDirectory(optionProjectPath);
-                directoryManager.SetCurrentDirectory(optionProjectPath);
-                pathManager.SetCurrentDirectory(optionProjectPath);
+        Option<string> projectNameOption = new("--project-name") { Description = "The name of the project to add a change to." };
+        Option<string> messageOption = new("--message", "-m") { Description = "The change message for a given project." };
 
-                var command = new ChangeCommand(configurationManager, toolInteractiveService, changeFileHandler);
-                await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionProjectName, optionMessage);
-                    
-                context.ExitCode = CommandReturnCodes.Success;
-            }
-            catch (Exception e) when (e.IsExpectedException())
-            {
-                toolInteractiveService.WriteErrorLine(string.Empty);
-                toolInteractiveService.WriteErrorLine(e.Message);
-                    
-                context.ExitCode = CommandReturnCodes.UserError;
-            }
-            catch (Exception e)
-            {
-                // This is a bug
-                toolInteractiveService.WriteErrorLine(
-                    "Unhandled exception.\r\nThis is a bug.\r\nPlease copy the stack trace below and file a bug at https://github.com/philasmar/autover. " +
-                    e.PrettyPrint());
-                    
-                context.ExitCode = CommandReturnCodes.UnhandledException;
-            }
-        });
+        changeCommand.Add(OptionProjectPath);
+        changeCommand.Add(OptionIncrementType);
+        changeCommand.Add(projectNameOption);
+        changeCommand.Add(messageOption);
+        changeCommand.Add(OptionVerbose);
+
+        changeCommand.SetAction((parseResult, cancellationToken) => ExecuteCommandAsync(parseResult, async () =>
+        {
+            var optionProjectPath = ResolveProjectPath(parseResult.GetValue(OptionProjectPath));
+            var optionIncrementType = parseResult.GetValue(OptionIncrementType);
+            var optionProjectName = parseResult.GetValue(projectNameOption);
+            var optionMessage = parseResult.GetValue(messageOption);
+
+            var command = new ChangeCommand(configurationManager, toolInteractiveService, changeFileHandler);
+            await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionProjectName, optionMessage);
+        }));
 
         return changeCommand;
     }
