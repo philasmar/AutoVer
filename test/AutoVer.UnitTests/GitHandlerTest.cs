@@ -10,6 +10,9 @@ namespace AutoVer.UnitTests;
 /// exist yet at the given tag (e.g. autover.json or a change file was added in a commit after
 /// the last release tag). Both must resolve that like "nothing found at this tag" instead.
 /// </summary>
+// See VersionTest.cs for why this shares the "git" NotInParallel key.
+[Retry(3)]
+[NotInParallel("git")]
 public class GitHandlerTest
 {
     private string _tempDir = string.Empty;

@@ -4,7 +4,9 @@ using LibGit2Sharp;
 
 namespace AutoVer.UnitTests;
 
+// See VersionTest.cs for why this shares the "git" NotInParallel key.
 [Retry(3)]
+[NotInParallel("git")]
 public class GitWorktreeTest
 {
     private string _tempDir = string.Empty;

@@ -4,7 +4,12 @@ using LibGit2Sharp;
 
 namespace AutoVer.UnitTests;
 
+// Constrained against every other class that touches LibGit2Sharp directly (shared "git" key) -
+// libgit2's native library races on its lazy first-time initialization when many Repository
+// objects are opened concurrently across threads, causing sporadic, different-test-each-time
+// failures under CI's higher parallelism.
 [Retry(3)]
+[NotInParallel("git")]
 public class VersionTest
 {
     private string _tempDir = string.Empty;
