@@ -10,6 +10,9 @@ namespace AutoVer.UnitTests;
 /// (which all share the generic file name "Dockerfile") collided on the same generated
 /// project name.
 /// </summary>
+// See VersionTest.cs for why this shares the "git" NotInParallel key.
+[Retry(3)]
+[NotInParallel("git")]
 public class ConfigurationManagerTest
 {
     private string _tempDir = string.Empty;
