@@ -20,11 +20,8 @@ public class VersionCommand(
         bool optionNoTag,
         string? optionUseVersion)
     {
-        if (!Enum.TryParse(optionIncrementType, out IncrementType incrementType))
-        {
-            incrementType = IncrementType.Patch;
-        }
-        
+        var incrementType = IncrementTypeParser.Parse(optionIncrementType);
+
         var userConfiguration = await configurationManager.RetrieveUserConfiguration(optionProjectPath, incrementType);
         
         if (!optionSkipVersionTagCheck)

@@ -1,6 +1,7 @@
 ﻿using AutoVer.Constants;
 using AutoVer.Models;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Xml;
 
 namespace AutoVer.UnitTests.Utilities;
@@ -146,6 +147,34 @@ $@"{{
         }
 
         xmlProjectFile.Save(projectDefinition.ProjectPath);
+    }
+
+    public static async Task<string> CreateDockerfile(string directory, string fileName = "Dockerfile")
+    {
+        if (!Directory.Exists(directory))
+            Directory.CreateDirectory(directory);
+        var filePath = Path.Combine(directory, fileName);
+        await File.WriteAllTextAsync(filePath, "FROM alpine:3.20\nCMD [\"true\"]\n");
+        return filePath;
+    }
+
+    public static async Task SetDockerfileVersion(string dockerfilePath, string version)
+    {
+        var lines = (await File.ReadAllTextAsync(dockerfilePath)).Replace("\r\n", "\n").Split('\n').ToList();
+        var labelLine = $"LABEL {ProjectConstants.DockerImageVersionLabel}=\"{version}\"";
+        var index = lines.FindIndex(line => line.Contains(ProjectConstants.DockerImageVersionLabel));
+        if (index >= 0)
+            lines[index] = labelLine;
+        else
+            lines.Insert(1, labelLine);
+        await File.WriteAllTextAsync(dockerfilePath, string.Join('\n', lines));
+    }
+
+    public static async Task<string> GetDockerfileVersion(string dockerfilePath)
+    {
+        var content = await File.ReadAllTextAsync(dockerfilePath);
+        var match = Regex.Match(content, $"{Regex.Escape(ProjectConstants.DockerImageVersionLabel)}=\"?([^\"\\s]*)\"?");
+        return match.Success ? match.Groups[1].Value : string.Empty;
     }
 
     public static async Task<bool> CreateProject(params string[] path)

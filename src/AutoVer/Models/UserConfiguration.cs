@@ -1,7 +1,6 @@
 using System.Text.Json.Serialization;
-using System.Xml;
-using AutoVer.Constants;
 using AutoVer.Services.IO;
+using AutoVer.Services.ProjectFiles;
 
 namespace AutoVer.Models;
 
@@ -23,6 +22,7 @@ public class ProjectContainer : IJsonOnDeserialized
 {
     private IFileManager? _fileManager;
     private IPathManager? _pathManager;
+    private IProjectFileHandlerResolver? _projectFileHandlerResolver;
 
     public required string Name { get; set; }
     public string? Path { get; set; }
@@ -50,7 +50,7 @@ public class ProjectContainer : IJsonOnDeserialized
 
     public void OnDeserialized()
     {
-        if (_fileManager == null || _pathManager == null)
+        if (_fileManager == null || _pathManager == null || _projectFileHandlerResolver == null)
             return;
 
         bool isPathProvided = !string.IsNullOrEmpty(Path);
@@ -74,40 +74,20 @@ public class ProjectContainer : IJsonOnDeserialized
         {
             var normalizedPath = path.Replace('\\', _pathManager.DirectorySeparatorChar).Replace('/', _pathManager.DirectorySeparatorChar);
             if (!_fileManager.Exists(normalizedPath))
-                throw new Exception($"Failed to find a valid .csproj or .nuspec file at path {normalizedPath}");
+                throw new Exception($"Failed to find a valid .csproj, .nuspec, or Dockerfile file at path {normalizedPath}");
 
-            var extension = _pathManager.GetExtension(normalizedPath);
-            if (!string.Equals(extension, ".csproj") && !string.Equals(extension, ".nuspec"))
-            {
-                var errorMessage = $"Invalid project path {normalizedPath}. The project path must point to a .csproj or .nuspec file";
-                throw new Exception(errorMessage);
-            }
-            
-            var xmlProjectFile = new XmlDocument{ PreserveWhitespace = true };
-            xmlProjectFile.LoadXml(_fileManager.ReadAllText(normalizedPath));
-            
-            var projectDefinition =  new ProjectDefinition(
-                xmlProjectFile,
-                _pathManager.GetFullPath(normalizedPath)
-            );
+            var handler = _projectFileHandlerResolver.Resolve(normalizedPath);
+            var projectDefinition = handler.Load(_pathManager.GetFullPath(normalizedPath), _fileManager.ReadAllText(normalizedPath));
 
-            var versionTag = ProjectConstants.VersionTag;
-            if (string.Equals(extension, ".nuspec"))
-                versionTag = ProjectConstants.NuspecVersionTag;
-            var version = xmlProjectFile.GetElementsByTagName(versionTag);
-            if (version.Count > 0)
-            {
-                projectDefinition.Version = version[0]?.InnerText;
-            }
-            
             Projects.Add(new Project(normalizedPath, projectDefinition));
         }
     }
 
-    public void InjectDependency(IFileManager fileManager, IPathManager pathManager)
+    public void InjectDependency(IFileManager fileManager, IPathManager pathManager, IProjectFileHandlerResolver projectFileHandlerResolver)
     {
         _fileManager = fileManager;
         _pathManager = pathManager;
+        _projectFileHandlerResolver = projectFileHandlerResolver;
     }
 }
 
@@ -115,50 +95,29 @@ public class Project(string path, ProjectDefinition definition)
 {
     private IFileManager? _fileManager;
     private IPathManager? _pathManager;
+    private IProjectFileHandlerResolver? _projectFileHandlerResolver;
 
     public string Path { get; set; } = path;
-    
+
     internal ProjectDefinition ProjectDefinition { get; set; } = definition;
-    
+
     public void OnDeserialized()
     {
-        if (_fileManager == null || _pathManager == null)
+        if (_fileManager == null || _pathManager == null || _projectFileHandlerResolver == null)
             return;
 
         var normalizedPath = Path.Replace('\\', _pathManager.DirectorySeparatorChar).Replace('/', _pathManager.DirectorySeparatorChar);
         if (!_fileManager.Exists(normalizedPath))
-            throw new Exception($"Failed to find a valid .csproj or .nuspec file at path {normalizedPath}");
+            throw new Exception($"Failed to find a valid .csproj, .nuspec, or Dockerfile file at path {normalizedPath}");
 
-        var extension = _pathManager.GetExtension(normalizedPath);
-        if (!string.Equals(extension, ".csproj") && !string.Equals(extension, ".nuspec"))
-        {
-            var errorMessage = $"Invalid project path {normalizedPath}. The project path must point to a .csproj or .nuspec file";
-            throw new Exception(errorMessage);
-        }
-            
-        var xmlProjectFile = new XmlDocument{ PreserveWhitespace = true };
-        xmlProjectFile.LoadXml(_fileManager.ReadAllText(normalizedPath));
-            
-        var projectDefinition =  new ProjectDefinition(
-            xmlProjectFile,
-            _pathManager.GetFullPath(normalizedPath)
-        );
-
-        var versionTag = ProjectConstants.VersionTag;
-        if (string.Equals(extension, ".nuspec"))
-            versionTag = ProjectConstants.NuspecVersionTag;
-        var version = xmlProjectFile.GetElementsByTagName(versionTag);
-        if (version.Count > 0)
-        {
-            projectDefinition.Version = version[0]?.InnerText;
-        }
-            
-        ProjectDefinition = projectDefinition;
+        var handler = _projectFileHandlerResolver.Resolve(normalizedPath);
+        ProjectDefinition = handler.Load(_pathManager.GetFullPath(normalizedPath), _fileManager.ReadAllText(normalizedPath));
     }
 
-    public void InjectDependency(IFileManager fileManager, IPathManager pathManager)
+    public void InjectDependency(IFileManager fileManager, IPathManager pathManager, IProjectFileHandlerResolver projectFileHandlerResolver)
     {
         _fileManager = fileManager;
         _pathManager = pathManager;
+        _projectFileHandlerResolver = projectFileHandlerResolver;
     }
 }

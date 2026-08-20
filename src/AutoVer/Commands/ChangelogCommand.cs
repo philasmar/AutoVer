@@ -17,11 +17,8 @@ public class ChangelogCommand(
         bool optionReleaseName,
         bool optionTagName)
     {
-        if (!Enum.TryParse(optionIncrementType, out IncrementType incrementType))
-        {
-            incrementType = IncrementType.Patch;
-        }
-        
+        var incrementType = IncrementTypeParser.Parse(optionIncrementType);
+
         if (string.IsNullOrEmpty(optionProjectPath))
             optionProjectPath = Directory.GetCurrentDirectory();
 

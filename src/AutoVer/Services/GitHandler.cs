@@ -123,7 +123,10 @@ public class GitHandler(
         }
     }
 
-    public string GetFileByTag(string gitRoot, string tagName, string filePath)
+    // A tag can predate the path it's asked to look up - e.g. a project adopts
+    // autover.json (or its first change file) only after already having release
+    // tags. That must resolve like "no file at this tag" (null), not throw.
+    public string? GetFileByTag(string gitRoot, string tagName, string filePath)
     {
         using var gitRepository = new Repository(gitRoot);
         var tag = gitRepository.Tags.First(x => x.FriendlyName.Equals(tagName));
@@ -131,7 +134,9 @@ public class GitHandler(
         string[] paths = filePath.Split(pathManager.DirectorySeparatorChar);
         string fullPath = paths[0];
         Tree tree = commit.Tree;
-        TreeEntry entry = tree.First(x => x.Path == fullPath);
+        TreeEntry? entry = tree.FirstOrDefault(x => x.Path == fullPath);
+        if (entry is null)
+            return null;
         if(entry.TargetType == TreeEntryTargetType.Tree)
         {
             foreach(string pathPart in paths.Skip(1).ToArray())
@@ -140,13 +145,15 @@ public class GitHandler(
                     tree = (Tree)entry.Target;
 
                 fullPath += "/" + pathPart;
-                entry = tree.First(x => x.Path == fullPath);
+                entry = tree.FirstOrDefault(x => x.Path == fullPath);
+                if (entry is null)
+                    return null;
             }
         }
         Blob blob = (Blob) entry.Target;
         return blob.GetContentText();
     }
-    
+
     public List<GitFile> GetFolderByTag(string gitRoot, string tagName, string folderPath)
     {
         using var gitRepository = new Repository(gitRoot);
@@ -155,8 +162,10 @@ public class GitHandler(
         string[] paths = folderPath.Split(pathManager.DirectorySeparatorChar);
         string fullPath = paths[0];
         Tree tree = commit.Tree;
-        TreeEntry entry = tree.First(x => x.Path == fullPath);
         var files = new List<GitFile>();
+        TreeEntry? entry = tree.FirstOrDefault(x => x.Path == fullPath);
+        if (entry is null)
+            return files;
         if(entry.TargetType == TreeEntryTargetType.Tree)
         {
             foreach(string pathPart in paths.Skip(1).ToArray())
