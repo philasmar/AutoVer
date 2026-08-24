@@ -100,6 +100,10 @@ public class CommandFactory(
         Option<bool> noCommitOption = new("--no-commit") { Description = "Do not commit changes after versioning." };
         Option<bool> noTagOption = new("--no-tag") { Description = "Do not add a Git Tag after versioning." };
         Option<string> useVersionOption = new("--use-version") { Description = "Use a specific version for all projects." };
+        Option<bool> currentOption = new("--current")
+        {
+            Description = "Print the current version of each project and exit, without incrementing, committing, or tagging anything."
+        };
 
         versionCommand.Add(OptionProjectPath);
         versionCommand.Add(OptionIncrementType);
@@ -107,6 +111,7 @@ public class CommandFactory(
         versionCommand.Add(noCommitOption);
         versionCommand.Add(noTagOption);
         versionCommand.Add(useVersionOption);
+        versionCommand.Add(currentOption);
         versionCommand.Add(OptionVerbose);
 
         versionCommand.SetAction((parseResult, cancellationToken) => ExecuteCommandAsync(parseResult, async () =>
@@ -117,6 +122,7 @@ public class CommandFactory(
             var optionNoCommit = parseResult.GetValue(noCommitOption);
             var optionNoTag = parseResult.GetValue(noTagOption);
             var optionUseVersion = parseResult.GetValue(useVersionOption);
+            var optionCurrent = parseResult.GetValue(currentOption);
 
             var command = new VersionCommand(
                 projectHandler,
@@ -124,8 +130,9 @@ public class CommandFactory(
                 configurationManager,
                 changeFileHandler,
                 versionHandler,
-                versionIncrementer);
-            await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck, optionNoCommit, optionNoTag, optionUseVersion);
+                versionIncrementer,
+                toolInteractiveService);
+            await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck, optionNoCommit, optionNoTag, optionUseVersion, optionCurrent);
         }));
 
         return versionCommand;

@@ -10,20 +10,28 @@ public class VersionCommand(
     IConfigurationManager configurationManager,
     IChangeFileHandler changeFileHandler,
     IVersionHandler versionHandler,
-    IVersionIncrementer versionIncrementer)
+    IVersionIncrementer versionIncrementer,
+    IToolInteractiveService toolInteractiveService)
 {
     public async Task ExecuteAsync(
-        string? optionProjectPath, 
-        string? optionIncrementType, 
-        bool optionSkipVersionTagCheck, 
-        bool optionNoCommit, 
+        string? optionProjectPath,
+        string? optionIncrementType,
+        bool optionSkipVersionTagCheck,
+        bool optionNoCommit,
         bool optionNoTag,
-        string? optionUseVersion)
+        string? optionUseVersion,
+        bool optionCurrent)
     {
         var incrementType = IncrementTypeParser.Parse(optionIncrementType);
 
         var userConfiguration = await configurationManager.RetrieveUserConfiguration(optionProjectPath, incrementType);
-        
+
+        if (optionCurrent)
+        {
+            PrintCurrentVersions(userConfiguration);
+            return;
+        }
+
         if (!optionSkipVersionTagCheck)
         {
             foreach (var availableProject in userConfiguration.Projects)
@@ -143,6 +151,32 @@ public class VersionCommand(
             if (!optionNoTag)
             {
                 gitHandler.AddTag(userConfiguration, versionHandler.GetNewVersionTag(userConfiguration));
+            }
+        }
+    }
+
+    // A single project (the common case) prints as a bare value, matching
+    // `changelog --release-name`'s convention for shell capture, e.g.
+    // VERSION=$(autover version --current). Multiple projects print
+    // labeled, since there's no single "the" version to capture bare.
+    private void PrintCurrentVersions(UserConfiguration userConfiguration)
+    {
+        var allProjects = userConfiguration.Projects
+            .SelectMany(container => container.Projects)
+            .ToList();
+
+        if (allProjects.Count == 1)
+        {
+            toolInteractiveService.WriteLine(allProjects[0].ProjectDefinition.Version);
+            return;
+        }
+
+        foreach (var container in userConfiguration.Projects)
+        {
+            foreach (var project in container.Projects)
+            {
+                var label = container.Projects.Count > 1 ? $"{container.Name} ({project.Path})" : container.Name;
+                toolInteractiveService.WriteLine($"{label}: {project.ProjectDefinition.Version}");
             }
         }
     }

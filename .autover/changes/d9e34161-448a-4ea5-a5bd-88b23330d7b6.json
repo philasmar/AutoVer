@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "Type": "Minor",
+      "ChangelogMessages": [
+        "Add a --current flag to \u0027version\u0027 to print each project\u0027s current version without incrementing, committing, or tagging anything"
+      ]
+    }
+  ]
+}
