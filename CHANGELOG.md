@@ -1,3 +1,8 @@
+## Release 2026-08-24
+
+### AutoVer (1.1.0)
+* Add a --current flag to 'version' to print each project's current version without incrementing, committing, or tagging anything
+
 ## Release 2026-08-20
 
 ### AutoVer (1.0.0)
