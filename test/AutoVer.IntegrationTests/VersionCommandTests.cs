@@ -315,6 +315,24 @@ public class VersionCommandTests
         await Assert.That(GitUtilities.GetLastCommitMessage(_tempDir)).IsEqualTo($"Release {today} #2");
     }
 
+    // L. `--current` prints the already-set version and exits, without incrementing,
+    // committing, or tagging anything - callers (e.g. a pipeline pushing a container tag)
+    // need to read a project's current version without accidentally bumping it.
+    [Test]
+    public async Task Current_PrintsVersionWithoutMutating()
+    {
+        var csprojPath = await SetUpSingleProjectRepo("Project1", "1.2.3", changeFilesDetermineIncrementType: false);
+        var commitCountBefore = GitUtilities.GetCommitCount(_tempDir);
+
+        var (exitCode, output, _) = await AutoVerUtilities.RunCapturingOutput(["version", "--project-path", _tempDir, "--current"]);
+
+        await Assert.That(exitCode).IsEqualTo(CommandReturnCodes.Success);
+        await Assert.That(output.Trim()).IsEqualTo("1.2.3");
+        await Assert.That(await IOUtilities.GetProjectVersion(csprojPath)).IsEqualTo("1.2.3");
+        await Assert.That(GitUtilities.GetCommitCount(_tempDir)).IsEqualTo(commitCountBefore);
+        await Assert.That(GitUtilities.GetAllTags(_tempDir)).IsEmpty();
+    }
+
     // `changeFilesDetermineIncrementType` must be true for scenarios that rely on a change
     // file to pick the increment type (B/C/D/K), and false for scenarios with no change
     // file at all (G/H/I/J) — with it true and no change file, VersionCommand resolves the
