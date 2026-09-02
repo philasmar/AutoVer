@@ -1,3 +1,12 @@
+## Release 2026-09-02
+
+### AutoVer (1.2.0)
+* Add configurable TagFormat and ReleaseNameFormat, so a release can be tagged by version (e.g. v1.4.0) instead of only by date. Formats are built from placeholders with optional groups, and are validated for invertibility and against git's ref grammar when the configuration is read
+* Order prerelease versions by SemVer 2.0.0 precedence, so beta.2 sorts below beta.10 and 1.4.0 sorts above 1.4.0-beta.1
+* Keep a hyphenated prerelease label such as 1.0.0-alpha-1 intact when parsing a version, instead of dropping it
+* Identify the current release as the nearest release tag reachable from HEAD, so a backport's changelog no longer describes the highest version instead of the release just cut
+* Fix the release name falling back to a tag-shaped string on the first release of a new date
+
 ## Release 2026-08-24
 
 ### AutoVer (1.1.0)
