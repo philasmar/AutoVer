@@ -98,6 +98,61 @@ public class GitHandler(
         return gitRepository.Tags.Select(x => x.FriendlyName).ToList();
     }
 
+    public bool IsValidTagName(string tagName) =>
+        !string.IsNullOrEmpty(tagName) && Reference.IsValidName($"refs/tags/{tagName}");
+
+    public List<string> FindNearestReachableTags(string gitRoot, IReadOnlyCollection<string> candidateTagNames)
+    {
+        if (candidateTagNames.Count == 0)
+            return [];
+
+        using var gitRepository = new Repository(gitRoot);
+
+        var head = gitRepository.Head.Tip;
+        if (head is null)
+            return [];
+
+        var candidates = candidateTagNames.ToHashSet(StringComparer.Ordinal);
+        var tagsByCommit = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+
+        foreach (var tag in gitRepository.Tags)
+        {
+            if (!candidates.Contains(tag.FriendlyName))
+                continue;
+
+            // PeeledTarget resolves an annotated tag through its annotation object to the commit
+            // itself; Target would be the annotation and would never match a commit sha.
+            var commitSha = (tag.PeeledTarget ?? tag.Target)?.Sha;
+            if (commitSha is null)
+                continue;
+
+            if (!tagsByCommit.TryGetValue(commitSha, out var names))
+                tagsByCommit[commitSha] = names = [];
+
+            names.Add(tag.FriendlyName);
+        }
+
+        if (tagsByCommit.Count == 0)
+            return [];
+
+        // Walked newest-first from HEAD and stopped at the first tagged commit, so the result is the
+        // nearest release rather than the highest-sorting one - and the walk costs only the distance
+        // to that release, not the whole history.
+        var filter = new CommitFilter
+        {
+            IncludeReachableFrom = head,
+            SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time
+        };
+
+        foreach (var commit in gitRepository.Commits.QueryBy(filter))
+        {
+            if (tagsByCommit.TryGetValue(commit.Sha, out var names))
+                return names;
+        }
+
+        return [];
+    }
+
     public List<ConventionalCommit> GetVersionCommits(UserConfiguration userConfiguration, string? lastVersionTag = null)
     {
         using var gitRepository = new Repository(userConfiguration.GitRoot);

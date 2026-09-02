@@ -83,6 +83,10 @@ public class DockerfileFileHandler(
                 $"{match.Groups["prefix"].Value}{newVersion}{match.Groups["suffix"].Value}");
         }
 
+        // Keep the in-memory definition in step with what was just written - a version-based tag
+        // format is rendered from this after every project has been updated.
+        projectDefinition.Version = newVersion;
+
         fileManager.WriteAllText(projectDefinition.ProjectPath, string.Join('\n', lines));
     }
 

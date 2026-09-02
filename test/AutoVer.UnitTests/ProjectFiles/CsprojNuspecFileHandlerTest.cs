@@ -119,7 +119,9 @@ public class CsprojNuspecFileHandlerTest
         var definition = handler.Load(projectPath, await File.ReadAllTextAsync(projectPath));
         handler.UpdateVersion(definition, IncrementType.Patch);
 
-        await Assert.That(definition.Version).IsEqualTo("1.2.3");
+        // The in-memory definition tracks what was written rather than going stale - a
+        // version-based TagFormat is rendered from it once every project has been updated.
+        await Assert.That(definition.Version).IsEqualTo("1.2.4");
 
         var reloaded = handler.Load(projectPath, await File.ReadAllTextAsync(projectPath));
         await Assert.That(reloaded.Version).IsEqualTo("1.2.4");
