@@ -1,22 +1,28 @@
-﻿using LibGit2Sharp;
-using static AutoVer.Services.VersionHandler;
+﻿using AutoVer.Models;
+using LibGit2Sharp;
 
 namespace AutoVer.UnitTests.Utilities;
 
 internal static class GitUtilities
 {
-    public static string GetLastTag(string gitRepositoryPath)
+    public static string GetLastTag(string gitRepositoryPath, string? tagFormat = null)
     {
+        var format = VersionTagFormat.Parse(
+            tagFormat ?? UserConfiguration.DefaultTagFormat,
+            nameof(UserConfiguration.TagFormat));
+
         using (var repo = new Repository(gitRepositoryPath))
         {
-            return repo.Tags
-                .Select(x => x.FriendlyName)
-                .Where(x => x.StartsWith("release_"))
-                .Select(x => new VersionTag(x))
-                .OrderByDescending(x => x.Date)
-                .ThenByDescending(x => x.Count)
-                .FirstOrDefault()?
-                .ToTagName() ?? string.Empty;
+            var versionTags = new List<VersionTag>();
+            foreach (var friendlyName in repo.Tags.Select(tag => tag.FriendlyName))
+            {
+                if (format.TryParseTag(friendlyName, out var parsed))
+                    versionTags.Add(parsed!);
+            }
+
+            versionTags.Sort((left, right) => right.CompareTo(left));
+
+            return versionTags.Count > 0 ? versionTags[0].Raw : string.Empty;
         }
     }
 

@@ -125,8 +125,81 @@ public class ConfigurationManager(
         if (string.IsNullOrEmpty(userConfiguration.GitRoot))
             throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
 
+        ValidateTagFormats(userConfiguration);
+
         return userConfiguration;
     }
+
+    public UserConfiguration? LoadRepositorySettings(string gitRoot)
+    {
+        var configPath = pathManager.Combine(gitRoot, ConfigurationConstants.ConfigFolderName, ConfigurationConstants.ConfigFileName);
+        if (!fileManager.Exists(configPath))
+            return null;
+
+        try
+        {
+            // Deliberately deserialized without UserConfigurationConverter: callers here only need
+            // repository-level settings, and must not trigger project-file loading (or the path
+            // validation that comes with it) as a side effect of reading one.
+            return JsonSerializer.Deserialize<UserConfiguration>(fileManager.ReadAllText(configPath));
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidUserConfigurationException(
+                $"There was an issue loading the user configuration at '{configPath}'.",
+                ex);
+        }
+    }
+
+    /// <summary>
+    /// Fails fast on a tag/release-name format that can't work, so a bad format is reported when the
+    /// configuration is read rather than part-way through a release.
+    /// </summary>
+    private void ValidateTagFormats(UserConfiguration userConfiguration)
+    {
+        var tagFormat = VersionTagFormat.Parse(
+            userConfiguration.EffectiveTagFormat,
+            nameof(UserConfiguration.TagFormat));
+        var releaseNameFormat = VersionTagFormat.Parse(
+            userConfiguration.ResolveReleaseNameFormat(tagFormat.Family),
+            nameof(UserConfiguration.ReleaseNameFormat));
+
+        // Rendered with stand-in values purely to test the format's own literal text against git's
+        // ref grammar, using git itself rather than a hand-maintained copy of the rules. Done here,
+        // before any project file is written, so a format git would refuse doesn't leave the working
+        // tree half-updated. VersionHandler repeats the check on the real tag name, where an illegal
+        // character could still arrive through a placeholder value such as a prerelease label.
+        var probeTagName = tagFormat.Render(
+            new ThreePartVersion { Major = 1, Minor = 0, Patch = 0, PrereleaseLabel = "0" },
+            new DateTime(2000, 1, 1),
+            2);
+        if (!gitHandler.IsValidTagName(probeTagName))
+            throw new InvalidUserConfigurationException(
+                $"'{nameof(UserConfiguration.TagFormat)}' ('{tagFormat.Format}') produces tag names git will not " +
+                $"accept, such as '{probeTagName}'. A tag name cannot contain a space, '~', '^', ':', '?', '*', " +
+                "'[', '\\', '..' or '@{', cannot end with '.' or '.lock', and cannot have an empty path segment.");
+
+        // A release name is rendered from the components of the tag it describes, so it can only
+        // ask for components the tag actually carries - a date-based name has nothing to render
+        // from once the tag holds a version instead of a date.
+        if (tagFormat.Family != releaseNameFormat.Family)
+            throw new InvalidUserConfigurationException(
+                $"'{nameof(UserConfiguration.TagFormat)}' is {tagFormat.Family.ToString().ToLowerInvariant()}-based " +
+                $"('{tagFormat.Format}') while '{nameof(UserConfiguration.ReleaseNameFormat)}' is " +
+                $"{releaseNameFormat.Family.ToString().ToLowerInvariant()}-based ('{releaseNameFormat.Format}'). " +
+                "Both must use the same family of placeholders.");
+
+        if (tagFormat.Family == TagFormatFamily.Semver &&
+            !userConfiguration.UseSameVersionForAllProjects &&
+            userConfiguration.Projects.Count > 1)
+            throw new InvalidUserConfigurationException(
+                $"'{nameof(UserConfiguration.TagFormat)}' is version-based ('{tagFormat.Format}') but this repository " +
+                $"has {userConfiguration.Projects.Count} projects that can hold different versions " +
+                $"('{nameof(UserConfiguration.UseSameVersionForAllProjects)}' is false), so there's no single version " +
+                "for the tag to represent. Either set 'UseSameVersionForAllProjects' to true, or use a date-based " +
+                $"'{nameof(UserConfiguration.TagFormat)}'.");
+    }
+
 
     public async Task ResetUserConfiguration(UserConfiguration userConfiguration, UserConfigurationResetRequest resetRequest)
     {
