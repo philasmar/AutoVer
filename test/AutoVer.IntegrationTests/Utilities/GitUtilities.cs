@@ -54,4 +54,37 @@ internal static class GitUtilities
         var signature = gitRepository.Config.BuildSignature(DateTimeOffset.Now);
         gitRepository.Commit(commitMessage, signature, signature);
     }
+
+    public static string GetCurrentBranch(string gitRepositoryPath)
+    {
+        using var repo = new Repository(gitRepositoryPath);
+        return repo.Head.FriendlyName;
+    }
+
+    public static void CreateAndCheckoutBranch(string gitRepositoryPath, string branchName)
+    {
+        using var repo = new Repository(gitRepositoryPath);
+        LibGit2Sharp.Commands.Checkout(repo, repo.CreateBranch(branchName));
+    }
+
+    public static void CheckoutBranch(string gitRepositoryPath, string branchName)
+    {
+        using var repo = new Repository(gitRepositoryPath);
+        LibGit2Sharp.Commands.Checkout(repo, repo.Branches[branchName]);
+    }
+
+    /// <summary>
+    /// Merges <paramref name="branchName"/> into the current branch, always producing a merge commit
+    /// - the strategy the release workflow requires, and the one that makes the release's own commits
+    /// reachable from the target branch rather than replayed onto it.
+    /// </summary>
+    public static void MergeNoFastForward(string gitRepositoryPath, string branchName)
+    {
+        using var repo = new Repository(gitRepositoryPath);
+        var signature = repo.Config.BuildSignature(DateTimeOffset.Now);
+        repo.Merge(repo.Branches[branchName], signature, new MergeOptions
+        {
+            FastForwardStrategy = FastForwardStrategy.NoFastForward
+        });
+    }
 }

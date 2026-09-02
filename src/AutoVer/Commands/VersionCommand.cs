@@ -145,12 +145,17 @@ public class VersionCommand(
 
         if (!optionNoCommit)
         {
+            // Resolved before committing, deliberately: a tag name that git would reject, or that
+            // collides with an existing release, must fail while the repository is still untouched
+            // rather than leaving behind a release commit with no tag on it.
+            var tagName = optionNoTag ? null : versionHandler.GetNewVersionTag(userConfiguration);
+
             if (gitHandler.HasStagedChanges(userConfiguration))
                 gitHandler.CommitChanges(userConfiguration, versionHandler.GetNewReleaseName(userConfiguration));
 
-            if (!optionNoTag)
+            if (tagName is not null)
             {
-                gitHandler.AddTag(userConfiguration, versionHandler.GetNewVersionTag(userConfiguration));
+                gitHandler.AddTag(userConfiguration, tagName);
             }
         }
     }

@@ -63,6 +63,10 @@ public class CsprojNuspecFileHandler(
             }
         }
 
+        // Keep the in-memory definition in step with what was just written - a version-based tag
+        // format is rendered from this after every project has been updated.
+        projectDefinition.Version = versionTag.InnerText;
+
         using var stream = fileManager.OpenWrite(projectDefinition.ProjectPath);
         xmlProjectFile.Save(stream);
     }
