@@ -182,15 +182,29 @@ public class CsprojNuspecFileHandlerTest
     }
 
     [Test]
-    public async Task UpdateVersion_NoVersionTag_ThrowsNoVersionTagException()
+    // A project with no Version element is seeded rather than rejected: the element is created in an
+    // unconditioned PropertyGroup, taking the given version as-is.
+    public async Task UpdateVersion_NoVersionTag_CreatesTheElementWithTheGivenVersion()
     {
         var handler = CreateHandler();
         var projectPath = Path.Combine(_tempDir, "Project1.csproj");
         await File.WriteAllTextAsync(projectPath, CsprojWithoutVersion);
         var definition = handler.Load(projectPath, await File.ReadAllTextAsync(projectPath));
 
-        await Assert.That(() => handler.UpdateVersion(definition, IncrementType.Patch))
-            .Throws<NoVersionTagException>();
+        handler.UpdateVersion(definition, IncrementType.Patch, overrideVersion: "1.0.0");
+
+        await Assert.That(definition.Version).IsEqualTo("1.0.0");
+
+        // The created element is what a reload reads back, and it sits inside a PropertyGroup.
+        var written = await File.ReadAllTextAsync(projectPath);
+        await Assert.That(written).Contains("<Version>1.0.0</Version>");
+        await Assert.That(handler.Load(projectPath, written).Version).IsEqualTo("1.0.0");
+
+        // Indentation is made of real text nodes under PreserveWhitespace, so the element has to be
+        // placed before the closing tag's own whitespace - appending after it lines the new element
+        // up with nothing and leaves </PropertyGroup> on the same line.
+        await Assert.That(written.Replace("\r\n", "\n")).Contains(
+            "    <TargetFramework>net8.0</TargetFramework>\n    <Version>1.0.0</Version>\n  </PropertyGroup>");
     }
 
     // The error paths above were only ever exercised against .csproj; GetVersionTagName has a
@@ -208,14 +222,25 @@ public class CsprojNuspecFileHandlerTest
     }
 
     [Test]
-    public async Task UpdateVersion_Nuspec_NoVersionTag_ThrowsNoVersionTagException()
+    // The nuspec's version belongs in its metadata element, not wherever a csproj would put it.
+    public async Task UpdateVersion_Nuspec_NoVersionTag_CreatesTheElementInMetadata()
     {
         var handler = CreateHandler();
         var projectPath = Path.Combine(_tempDir, "Package.nuspec");
         await File.WriteAllTextAsync(projectPath, NuspecWithoutVersion);
         var definition = handler.Load(projectPath, await File.ReadAllTextAsync(projectPath));
 
-        await Assert.That(() => handler.UpdateVersion(definition, IncrementType.Patch))
-            .Throws<NoVersionTagException>();
+        handler.UpdateVersion(definition, IncrementType.Patch, overrideVersion: "1.0.0");
+
+        await Assert.That(definition.Version).IsEqualTo("1.0.0");
+
+        var written = await File.ReadAllTextAsync(projectPath);
+        await Assert.That(written).Contains("<version>1.0.0</version>");
+        await Assert.That(handler.Load(projectPath, written).Version).IsEqualTo("1.0.0");
+
+        // Placed inside metadata rather than appended after it.
+        var document = new System.Xml.XmlDocument();
+        document.LoadXml(written);
+        await Assert.That(document.GetElementsByTagName("version")[0]!.ParentNode!.Name).IsEqualTo("metadata");
     }
 }

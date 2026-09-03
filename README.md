@@ -119,6 +119,8 @@ consumed by the next `autover changelog`.
 | `ChangelogCategories` | none | Map a commit type (e.g. `feat`) to a changelog heading. |
 | `TagFormat` | `release_{date}[_{iteration}]` | The git tag a release is tagged with. |
 | `ReleaseNameFormat` | follows `TagFormat` | The human-readable release name. |
+| `VersionFromTag` | `false` | Take the version from the repository's release tags instead of from a project file. |
+| `InitialVersion` | `0.1.0` | The version to start from when nothing carries one yet - a tag-sourced repository with no release tag, or a project file with no version field. |
 
 Each entry in `Projects` takes:
 
@@ -228,6 +230,69 @@ two differ after a backport - release `2.0.0`, then cut `1.9.1` from the older
 line - where building a changelog for the highest tag would describe the wrong
 release and cover the wrong commit range. If no release tag is reachable at all
 (an unmerged branch, or a shallow clone), the highest-ordering tag is used.
+
+### Starting from nothing
+
+A project that doesn't carry a version yet is **seeded** rather than rejected.
+AutoVer creates the version field - a `<Version>` element in an unconditioned
+`PropertyGroup`, a `<version>` in a nuspec's `metadata`, or an
+`org.opencontainers.image.version` LABEL appended to a Dockerfile - and writes
+`InitialVersion` into it, taken as-is rather than incremented. Every release after
+that reads the field back and increments it in the ordinary way, so seeding only
+ever happens once.
+
+`InitialVersion` defaults to `0.1.0`. Set it to start somewhere else:
+
+```json
+{ "InitialVersion": "1.0.0" }
+```
+
+This is decided per project entry: an entry whose files already carry a version
+takes it from there, and only one carrying none is seeded.
+
+### Versioning from tags, with no project file
+
+Some repositories have nothing to carry a version. A repository of shared CI
+templates, for instance, publishes no package and builds no image - its releases
+are consumed by pinned ref. A version written into a file there would be a version
+nothing ever reads.
+
+This is the model GitHub Actions uses: `action.yml` has no version field at all,
+and an action's version is purely the ref you check out. `VersionFromTag` does the
+same, taking the current version from the repository's own release tags:
+
+```json
+{
+  "Projects": [ { "Name": "ci" } ],
+  "VersionFromTag": true,
+  "InitialVersion": "1.0.0",
+  "TagFormat": "v{major}.{minor}.{patch}",
+  "ChangeFilesDetermineIncrementType": true
+}
+```
+
+Projects are listed by **name only** - the name is what `autover change
+--project-name` attaches to and what the changelog labels. There is no `Path`.
+
+A release then reads the current version out of the latest release tag, increments
+it, and tags the new one. Because nothing is written, `autover version` produces
+**no commit**: the tag lands on `HEAD`, and the release's only content is whatever
+`autover changelog` commits afterwards. On the very first release there is no tag
+to read, so `InitialVersion` is used exactly as given rather than incremented.
+
+Where several projects are listed, they share the single version the tag carries,
+and the largest increment any of them asked for wins - a Major change anywhere
+makes the release a Major one.
+
+Four things are checked when the configuration is read:
+
+* `TagFormat` must be version-based. A date-based tag carries no version, so there
+  would be nothing to read the current one back from.
+* At least one project must be listed, so a change file has something to attach to.
+* No project may specify `Path` or `Paths`. One tag carries one version, so a
+  file-backed project alongside a tag-sourced one has no single answer.
+* `InitialVersion` only applies with `VersionFromTag`, and must be a valid three
+  part version.
 
 ### Switching the format on an existing repository
 

@@ -104,6 +104,17 @@ public class VersionHandler(
             : null;
     }
 
+    public ThreePartVersion? GetCurrentTagVersion(UserConfiguration configuration)
+    {
+        var format = GetTagFormat(configuration);
+
+        // No release yet is an ordinary state here, not an error: it is how the first release of a
+        // tag-sourced repository is recognised.
+        return GetVersionTags(configuration.GitRoot, format).Count == 0
+            ? null
+            : GetCurrentTag(configuration.GitRoot, format).Version;
+    }
+
     private VersionTag GetCurrentTag(string gitRoot, VersionTagFormat format)
     {
         // Generating a changelog asks for the current release several times over - its name, its
@@ -170,6 +181,11 @@ public class VersionHandler(
     /// </summary>
     private static ThreePartVersion? GetReleaseVersion(UserConfiguration configuration)
     {
+        // Set when the version came from the repository's tags rather than a project file, in which
+        // case there is no file to read it back from.
+        if (configuration.ResolvedReleaseVersion is not null)
+            return configuration.ResolvedReleaseVersion;
+
         ThreePartVersion? highest = null;
 
         foreach (var project in configuration.Projects.SelectMany(container => container.Projects))

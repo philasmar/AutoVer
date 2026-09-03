@@ -266,11 +266,10 @@ public class VersionCommandTests
         await Assert.That(GitUtilities.GetAllTags(_tempDir)).IsEmpty();
     }
 
-    // J. A project missing a <Version> tag fails cleanly (no raw stack trace) with a
-    // non-zero exit code. `--skip-version-tag-check` bypasses the pre-flight check but
-    // still fails at write time, since there is genuinely nothing to update.
+    // J. A project with no <Version> tag is seeded from the configured initial version rather than
+    // rejected - the element is created, so the release after this one increments normally.
     [Test]
-    public async Task MissingVersionTag_FailsCleanly_WithAndWithoutSkipCheck()
+    public async Task MissingVersionTag_IsSeededFromTheInitialVersion()
     {
         var csprojPath = await SetUpSingleProjectRepo("Project1", "1.0.0", changeFilesDetermineIncrementType: false);
         await IOUtilities.RemoveProjectVersionTag(csprojPath);
@@ -278,12 +277,68 @@ public class VersionCommandTests
         GitUtilities.CommitChanges(_tempDir, "Remove version tag");
 
         var (exitCode, _, error) = await AutoVerUtilities.RunCapturingOutput(["version", "--project-path", _tempDir]);
-        await Assert.That(exitCode).IsEqualTo(CommandReturnCodes.UserError);
-        await Assert.That(error).DoesNotContain("at AutoVer.");
 
-        var (skipExitCode, _, skipError) = await AutoVerUtilities.RunCapturingOutput(["version", "--project-path", _tempDir, "--skip-version-tag-check"]);
-        await Assert.That(skipExitCode).IsEqualTo(CommandReturnCodes.UserError);
-        await Assert.That(skipError).DoesNotContain("at AutoVer.");
+        await Assert.That(exitCode).IsEqualTo(CommandReturnCodes.Success);
+        await Assert.That(error).DoesNotContain("at AutoVer.");
+        // The default initial version, taken as-is rather than incremented.
+        await Assert.That(await IOUtilities.GetProjectVersion(csprojPath))
+            .IsEqualTo(UserConfiguration.DefaultInitialVersion);
+
+        // The element now exists, so the next release increments from it in the ordinary way.
+        await Assert.That(await AutoVerUtilities.InitializeApp().Run(["version", "--project-path", _tempDir]))
+            .IsEqualTo(CommandReturnCodes.Success);
+        await Assert.That(await IOUtilities.GetProjectVersion(csprojPath)).IsEqualTo("0.1.1");
+    }
+
+    // A version field that exists but is empty is the same situation as one that is missing - the
+    // project carries no version - so it is seeded rather than incremented from nothing.
+    [Test]
+    public async Task EmptyVersionTag_IsSeededFromTheInitialVersion()
+    {
+        await IOUtilities.CreateProject(_tempDir, "src", "Project1");
+        var csprojPath = Path.Combine(_tempDir, "src", "Project1", "Project1.csproj");
+        await IOUtilities.SetProjectVersion(csprojPath, "1.0.0");
+        var withEmptyVersion = (await File.ReadAllTextAsync(csprojPath))
+            .Replace("<Version>1.0.0</Version>", "<Version></Version>");
+        await File.WriteAllTextAsync(csprojPath, withEmptyVersion);
+
+        await IOUtilities.AddAutoVerFile(_tempDir,
+            @"{
+    ""Projects"": [ { ""Name"": ""Project1"", ""Path"": ""src/Project1/Project1.csproj"" } ],
+    ""UseCommitsForChangelog"": false,
+    ""ChangeFilesDetermineIncrementType"": false,
+    ""InitialVersion"": ""5.0.0""
+}");
+        GitUtilities.StageChanges(_tempDir, "*");
+        GitUtilities.CommitChanges(_tempDir, "Initial Commit");
+
+        var exitCode = await AutoVerUtilities.InitializeApp().Run(["version", "--project-path", _tempDir]);
+
+        await Assert.That(exitCode).IsEqualTo(CommandReturnCodes.Success);
+        await Assert.That(await IOUtilities.GetProjectVersion(csprojPath)).IsEqualTo("5.0.0");
+    }
+
+    // A configured InitialVersion applies to a project file too, not only to a tag-sourced
+    // repository - the seeded version is the one that was asked for.
+    [Test]
+    public async Task MissingVersionTag_UsesAConfiguredInitialVersion()
+    {
+        var csprojPath = await SetUpSingleProjectRepo("Project1", "1.0.0", changeFilesDetermineIncrementType: false);
+        await IOUtilities.RemoveProjectVersionTag(csprojPath);
+        await IOUtilities.AddAutoVerFile(_tempDir,
+            @"{
+    ""Projects"": [ { ""Name"": ""Project1"", ""Path"": ""src/Project1/Project1.csproj"" } ],
+    ""UseCommitsForChangelog"": false,
+    ""ChangeFilesDetermineIncrementType"": false,
+    ""InitialVersion"": ""2.5.0""
+}");
+        GitUtilities.StageChanges(_tempDir, "*");
+        GitUtilities.CommitChanges(_tempDir, "Remove version tag");
+
+        var exitCode = await AutoVerUtilities.InitializeApp().Run(["version", "--project-path", _tempDir]);
+
+        await Assert.That(exitCode).IsEqualTo(CommandReturnCodes.Success);
+        await Assert.That(await IOUtilities.GetProjectVersion(csprojPath)).IsEqualTo("2.5.0");
     }
 
     // K. Running `version` twice on the same calendar day produces `release_<date>` then

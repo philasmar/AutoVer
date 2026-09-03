@@ -55,6 +55,17 @@ internal static class GitUtilities
         gitRepository.Commit(commitMessage, signature, signature);
     }
 
+    /// <summary>
+    /// Moves an existing tag onto HEAD, as the release pipeline does after writing the changelog so
+    /// that the tag covers the whole release rather than the commit before it.
+    /// </summary>
+    public static void MoveTagToHead(string gitRepositoryPath, string tagName)
+    {
+        using var repo = new Repository(gitRepositoryPath);
+        repo.Tags.Remove(tagName);
+        repo.ApplyTag(tagName, repo.Head.Tip.Sha);
+    }
+
     public static string GetCurrentBranch(string gitRepositoryPath)
     {
         using var repo = new Repository(gitRepositoryPath);

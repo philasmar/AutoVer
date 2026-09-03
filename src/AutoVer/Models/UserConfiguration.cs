@@ -38,6 +38,27 @@ public class UserConfiguration
     /// Left null (rather than defaulted in place) so that rewriting this file doesn't stamp a
     /// value into the config of every repo that never asked for one.
     /// </summary>
+    /// <summary>
+    /// Used for the very first release of a repository whose version comes from its tags, where
+    /// there is no earlier tag to read one from. Taken as-is rather than incremented - it is the
+    /// version that first release carries.
+    /// </summary>
+    public const string DefaultInitialVersion = "0.1.0";
+
+    /// <summary>
+    /// Takes the version from the repository's release tags instead of from a project file, for a
+    /// repository that has no artifact to carry one - a shared CI templates repository, say, whose
+    /// releases are consumed by pinned ref rather than by a published package. Projects are then
+    /// listed by name only, and no file is written when a release is cut.
+    /// </summary>
+    public bool VersionFromTag { get; set; } = false;
+
+    /// <summary>
+    /// The version of the first release when <see cref="VersionFromTag"/> is set and no release tag
+    /// exists yet. Defaults to <see cref="DefaultInitialVersion"/>.
+    /// </summary>
+    public string? InitialVersion { get; set; }
+
     public string? TagFormat { get; set; }
 
     /// <summary>
@@ -45,6 +66,17 @@ public class UserConfiguration
     /// friendly name can differ from the raw tag.
     /// </summary>
     public string? ReleaseNameFormat { get; set; }
+
+    [JsonIgnore]
+    public string EffectiveInitialVersion =>
+        string.IsNullOrWhiteSpace(InitialVersion) ? DefaultInitialVersion : InitialVersion;
+
+    /// <summary>
+    /// The version this release will carry, worked out by the version command when
+    /// <see cref="VersionFromTag"/> is set. There is no project file to read it back from in that
+    /// case, so it is carried here for the tag and the changelog to render from.
+    /// </summary>
+    internal ThreePartVersion? ResolvedReleaseVersion { get; set; }
 
     [JsonIgnore]
     public string EffectiveTagFormat =>

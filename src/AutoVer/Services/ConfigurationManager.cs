@@ -84,7 +84,10 @@ public class ConfigurationManager(
         if (userConfiguration is null && !string.IsNullOrEmpty(tagName))
             userConfiguration = await LoadUserConfigurationFromRepository(gitRoot);
 
-        if (userConfiguration?.Projects?.Any() ?? false)
+        // Discovery is also skipped when the version comes from the repository's tags: there are no
+        // project files to find, so scanning for them would fail with a message about missing
+        // .csproj/.nuspec/Dockerfile files instead of the real problem.
+        if ((userConfiguration?.Projects?.Any() ?? false) || (userConfiguration?.VersionFromTag ?? false))
         {
             userConfiguration.GitRoot = gitRoot;
             userConfiguration.PersistConfiguration = true;
@@ -126,6 +129,7 @@ public class ConfigurationManager(
             throw new InvalidProjectException("The project path you have specified is not a valid git repository.");
 
         ValidateTagFormats(userConfiguration);
+        ValidateVersionFromTag(userConfiguration);
 
         return userConfiguration;
     }
@@ -189,7 +193,10 @@ public class ConfigurationManager(
                 $"{releaseNameFormat.Family.ToString().ToLowerInvariant()}-based ('{releaseNameFormat.Format}'). " +
                 "Both must use the same family of placeholders.");
 
+        // Exempt when the version comes from the tag: every project then reads that one version, so
+        // they cannot disagree in the way this rule guards against.
         if (tagFormat.Family == TagFormatFamily.Semver &&
+            !userConfiguration.VersionFromTag &&
             !userConfiguration.UseSameVersionForAllProjects &&
             userConfiguration.Projects.Count > 1)
             throw new InvalidUserConfigurationException(
@@ -241,6 +248,71 @@ public class ConfigurationManager(
                 $"Unable to reset the configuration file '{configPath}'.",
                 ex);
         }
+    }
+
+    /// <summary>
+    /// Checks the combination of settings a tag-sourced version depends on, at load time rather than
+    /// part-way through a release.
+    /// </summary>
+    private static void ValidateVersionFromTag(UserConfiguration userConfiguration)
+    {
+        // InitialVersion applies to any repository - it is also what seeds a project file that
+        // doesn't carry a version yet - so it is validated regardless of where the version comes from.
+        if (!ThreePartVersion.TryParse(userConfiguration.EffectiveInitialVersion, out _))
+            throw new InvalidUserConfigurationException(
+                $"'{nameof(UserConfiguration.InitialVersion)}' ('{userConfiguration.EffectiveInitialVersion}') is not " +
+                "a valid three part version.");
+
+        if (!userConfiguration.VersionFromTag)
+            return;
+
+
+
+        // The tag is the only place the version lives, so it has to be able to carry one - a
+        // date-based tag would leave nothing to read the current version back from.
+        var tagFormat = VersionTagFormat.Parse(
+            userConfiguration.EffectiveTagFormat,
+            nameof(UserConfiguration.TagFormat));
+        if (tagFormat.Family != TagFormatFamily.Semver)
+            throw new InvalidUserConfigurationException(
+                $"'{nameof(UserConfiguration.VersionFromTag)}' needs a version-based " +
+                $"'{nameof(UserConfiguration.TagFormat)}' to read the version back from, but " +
+                $"'{tagFormat.Format}' is date-based. Use a format built from {{major}}, {{minor}} and " +
+                "{patch}, e.g. 'v{major}.{minor}.{patch}'.");
+
+        // The tag is the only place a tag-sourced version lives, so a prerelease label the format
+        // can't render isn't merely absent from the tag - it's lost outright, and every release would
+        // silently come out as a plain version. A file-backed project at least keeps it in the file.
+        var prereleaseProjects = userConfiguration.Projects
+            .Where(project => !string.IsNullOrEmpty(project.PrereleaseLabel))
+            .Select(project => project.Name)
+            .ToList();
+        if (prereleaseProjects.Count > 0 && !tagFormat.SupportsPrerelease)
+            throw new InvalidUserConfigurationException(
+                $"{string.Join(", ", prereleaseProjects.Select(name => $"'{name}'"))} sets a PrereleaseLabel, but " +
+                $"'{nameof(UserConfiguration.TagFormat)}' ('{tagFormat.Format}') has no {{prerelease}} placeholder to " +
+                "carry it - and with the version coming from the tag, there is nowhere else for it to live. Add an " +
+                "optional prerelease group, e.g. 'v{major}.{minor}.{patch}[-{prerelease}]'.");
+
+        if (userConfiguration.Projects.Count == 0)
+            throw new InvalidUserConfigurationException(
+                $"'{nameof(UserConfiguration.VersionFromTag)}' is set but no projects are listed. List at least " +
+                "one project by name, so a change file has something to attach to and the changelog has something " +
+                "to label, e.g. \"Projects\": [ { \"Name\": \"my-repo\" } ].");
+
+        // One tag carries one version, so a project reading its version from a file alongside one
+        // reading it from the tag would leave no single answer for what the tag represents.
+        var withPaths = userConfiguration.Projects
+            .Where(project => project.GetPaths().Count > 0)
+            .Select(project => project.Name)
+            .ToList();
+        if (withPaths.Count > 0)
+            throw new InvalidUserConfigurationException(
+                $"'{nameof(UserConfiguration.VersionFromTag)}' is set, so every project takes its version from the " +
+                $"repository's tags - but {string.Join(", ", withPaths.Select(name => $"'{name}'"))} still " +
+                "specifies a Path or Paths. Remove them, or turn " +
+                $"'{nameof(UserConfiguration.VersionFromTag)}' off.");
+
     }
 
     private string GetProjectName(string projectPath) =>
