@@ -1,3 +1,4 @@
+using AutoVer.Constants;
 using AutoVer.Exceptions;
 using AutoVer.Models;
 using AutoVer.Services;
@@ -197,15 +198,45 @@ CMD ["/app/run.sh"]
     }
 
     [Test]
-    public async Task UpdateVersion_NoLabel_ThrowsNoVersionTagException()
+    // A Dockerfile with no version LABEL is seeded rather than rejected: the label is appended at
+    // the end of the file, which puts it in the final build stage - the stage whose labels the built
+    // image carries - and it takes the given version as-is rather than incrementing from nothing.
+    public async Task UpdateVersion_NoLabel_AppendsTheLabelWithTheGivenVersion()
     {
         var handler = CreateHandler();
         var dockerfilePath = Path.Combine(_tempDir, "Dockerfile");
         await File.WriteAllTextAsync(dockerfilePath, DockerfileWithoutLabel);
         var definition = handler.Load(dockerfilePath, await File.ReadAllTextAsync(dockerfilePath));
 
-        await Assert.That(() => handler.UpdateVersion(definition, IncrementType.Patch))
-            .Throws<NoVersionTagException>();
+        handler.UpdateVersion(definition, IncrementType.Patch, overrideVersion: "1.0.0");
+
+        await Assert.That(definition.Version).IsEqualTo("1.0.0");
+
+        var written = await File.ReadAllTextAsync(dockerfilePath);
+        await Assert.That(written).EndsWith($"LABEL {ProjectConstants.DockerImageVersionLabel}=\"1.0.0\"");
+        // Everything that was already there is left untouched.
+        await Assert.That(written).StartsWith("FROM alpine:3.20");
+        await Assert.That(written).Contains("CMD [\"/app/run.sh\"]");
+
+        // And the appended label is what a reload reads back as the version.
+        var reloaded = handler.Load(dockerfilePath, written);
+        await Assert.That(reloaded.Version).IsEqualTo("1.0.0");
+    }
+
+    // A file ending in a newline must keep it, and must not gain a blank line before the label.
+    [Test]
+    public async Task UpdateVersion_NoLabel_PreservesATrailingNewline()
+    {
+        var handler = CreateHandler();
+        var dockerfilePath = Path.Combine(_tempDir, "Dockerfile");
+        await File.WriteAllTextAsync(dockerfilePath, DockerfileWithoutLabel + "\n");
+        var definition = handler.Load(dockerfilePath, await File.ReadAllTextAsync(dockerfilePath));
+
+        handler.UpdateVersion(definition, IncrementType.Patch, overrideVersion: "1.0.0");
+
+        var written = await File.ReadAllTextAsync(dockerfilePath);
+        await Assert.That(written).EndsWith($"LABEL {ProjectConstants.DockerImageVersionLabel}=\"1.0.0\"\n");
+        await Assert.That(written).DoesNotContain("\n\nLABEL");
     }
 
     // A comment mentioning the version label text must not be treated as the version

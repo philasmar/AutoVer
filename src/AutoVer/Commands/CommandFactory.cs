@@ -95,7 +95,7 @@ public class CommandFactory(
 
         Option<bool> skipVersionTagCheckOption = new("--skip-version-tag-check")
         {
-            Description = $"Skip version tag check and increment projects even if some don't have a {ProjectConstants.VersionTag} tag."
+            Description = $"No longer needed: a project without a {ProjectConstants.VersionTag} tag is now seeded from InitialVersion rather than rejected. Accepted for compatibility and ignored."
         };
         Option<bool> noCommitOption = new("--no-commit") { Description = "Do not commit changes after versioning." };
         Option<bool> noTagOption = new("--no-tag") { Description = "Do not add a Git Tag after versioning." };

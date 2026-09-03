@@ -19,8 +19,11 @@ public class UserConfigurationConverter(
 
         UserConfiguration? obj = JsonSerializer.Deserialize<UserConfiguration>(ref reader, defaultOptions);
 
-        // Inject the dependency into the deserialized object
-        if (obj != null)
+        // Inject the dependency into the deserialized object. Skipped entirely when the version
+        // comes from the repository's tags: those projects are listed by name only, so there is no
+        // project file to load, and the Path/Paths requirement deliberately still applies to every
+        // other configuration.
+        if (obj != null && !obj.VersionFromTag)
         {
             foreach (var container in obj.Projects)
             {

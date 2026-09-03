@@ -1,0 +1,14 @@
+{
+  "Projects": [
+    {
+      "Name": "AutoVer",
+      "Type": "Minor",
+      "ChangelogMessages": [
+        "Add VersionFromTag, which takes the version from the repository's release tags instead of a project file, for a repository that has no artifact to carry one. Projects are listed by name only, no file is written when a release is cut, and the largest increment any of them asks for wins",
+        "Seed a project that carries no version yet from the new InitialVersion setting instead of failing. The version field is created - a Version element for a project file, a version element in a nuspec's metadata, or a LABEL appended to a Dockerfile - and takes InitialVersion as-is, so releases after that increment normally",
+        "Add InitialVersion, the version to start from when nothing carries one yet, defaulting to 0.1.0",
+        "--skip-version-tag-check is no longer needed, since a project without a version is seeded rather than rejected. It is still accepted, and ignored"
+      ]
+    }
+  ]
+}

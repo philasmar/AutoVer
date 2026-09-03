@@ -115,7 +115,11 @@ public class ChangelogHandler(
                         var changelogCategory = new ChangelogCategory
                         {
                             Name = configuredProject.Name,
-                            Version = configuredProject.Projects.First().ProjectDefinition.Version
+                            // A tag-sourced project has no project file to read a version from, so
+                            // the release tag itself is the only place it exists.
+                            Version = configuration.VersionFromTag
+                                ? versionHandler.GetCurrentTagVersion(configuration)?.ToString()
+                                : configuredProject.Projects.First().ProjectDefinition.Version
                         };
 
                         if (!configuration.UseSameVersionForAllProjects)

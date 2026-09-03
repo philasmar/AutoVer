@@ -189,10 +189,10 @@ public class DockerfileVersionCommandTests
         await Assert.That(GitUtilities.GetAllTags(_tempDir)).IsEmpty();
     }
 
-    // J. A Dockerfile missing the version LABEL fails cleanly (no raw stack trace) with a
-    // non-zero exit code, with and without `--skip-version-tag-check`.
+    // J. A Dockerfile with no version LABEL is seeded from the configured initial version rather
+    // than rejected - the label is created, so the release after this one increments normally.
     [Test]
-    public async Task MissingVersionLabel_FailsCleanly_WithAndWithoutSkipCheck()
+    public async Task MissingVersionLabel_IsSeededFromTheInitialVersion()
     {
         var dockerfilePath = await SetUpSingleDockerfileRepo("MyImage", "1.0.0", changeFilesDetermineIncrementType: false);
         await IOUtilities.RemoveDockerfileVersionLabel(dockerfilePath);
@@ -200,12 +200,17 @@ public class DockerfileVersionCommandTests
         GitUtilities.CommitChanges(_tempDir, "Remove version label");
 
         var (exitCode, _, error) = await AutoVerUtilities.RunCapturingOutput(["version", "--project-path", _tempDir]);
-        await Assert.That(exitCode).IsEqualTo(CommandReturnCodes.UserError);
-        await Assert.That(error).DoesNotContain("at AutoVer.");
 
-        var (skipExitCode, _, skipError) = await AutoVerUtilities.RunCapturingOutput(["version", "--project-path", _tempDir, "--skip-version-tag-check"]);
-        await Assert.That(skipExitCode).IsEqualTo(CommandReturnCodes.UserError);
-        await Assert.That(skipError).DoesNotContain("at AutoVer.");
+        await Assert.That(exitCode).IsEqualTo(CommandReturnCodes.Success);
+        await Assert.That(error).DoesNotContain("at AutoVer.");
+        // The default initial version, taken as-is rather than incremented.
+        await Assert.That(await IOUtilities.GetDockerfileVersion(dockerfilePath))
+            .IsEqualTo(UserConfiguration.DefaultInitialVersion);
+
+        // The label now exists, so the next release increments from it in the ordinary way.
+        await Assert.That(await AutoVerUtilities.InitializeApp().Run(["version", "--project-path", _tempDir]))
+            .IsEqualTo(CommandReturnCodes.Success);
+        await Assert.That(await IOUtilities.GetDockerfileVersion(dockerfilePath)).IsEqualTo("0.1.1");
     }
 
     // K. Running `version` twice on the same calendar day produces `release_<date>` then
