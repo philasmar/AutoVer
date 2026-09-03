@@ -136,6 +136,12 @@ public sealed class VersionTagFormat
     /// </summary>
     public bool SupportsIteration { get; }
 
+    /// <summary>
+    /// Whether the format can carry a prerelease label. It matters most where the tag is the only
+    /// place a version lives: a label the format can't render is simply lost.
+    /// </summary>
+    public bool SupportsPrerelease { get; }
+
     private VersionTagFormat(
         string format,
         List<Segment> segments,
@@ -150,6 +156,7 @@ public sealed class VersionTagFormat
         _segments = segments;
         Family = family;
         SupportsIteration = supportsIteration;
+        SupportsPrerelease = kinds.Contains(TagPlaceholder.Prerelease);
         _matcher = matcher;
         _dateGroups = dateGroups;
     }

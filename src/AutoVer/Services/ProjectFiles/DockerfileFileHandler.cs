@@ -59,28 +59,40 @@ public class DockerfileFileHandler(
     {
         var lines = projectDefinition.GetContents<List<string>>();
         var lineIndexes = FindVersionLabelLines(lines);
-        if (lineIndexes.Count == 0)
-            throw new NoVersionTagException($"The Dockerfile '{projectDefinition.ProjectPath}' does not have a '{ProjectConstants.DockerImageVersionLabel}' LABEL. Add one and run the tool again.");
 
         string newVersion;
-        if (string.IsNullOrEmpty(overrideVersion))
-        {
-            var currentVersion = VersionLabelRegex.Match(lines[lineIndexes[0]]).Groups["version"].Value;
-            newVersion = versionIncrementer.GetNextVersion(currentVersion, incrementType, prereleaseLabel).ToString();
-        }
-        else
+        if (!string.IsNullOrEmpty(overrideVersion))
         {
             if (!ThreePartVersion.TryParse(overrideVersion, out var version))
                 throw new InvalidArgumentException($"The version '{overrideVersion}' you are trying to update to is invalid.");
             newVersion = version.ToString();
         }
-
-        // Multi-stage Dockerfiles can repeat the same version LABEL per stage; keep every
-        // occurrence in sync rather than only updating the first one found.
-        foreach (var lineIndex in lineIndexes)
+        else if (lineIndexes.Count == 0)
         {
-            lines[lineIndex] = VersionLabelRegex.Replace(lines[lineIndex], match =>
-                $"{match.Groups["prefix"].Value}{newVersion}{match.Groups["suffix"].Value}");
+            // A Dockerfile carrying no version yet is seeded rather than rejected. The caller
+            // normally supplies the version to seed with; this is only the fallback for a direct
+            // call that didn't, and it is taken as-is rather than incremented.
+            newVersion = versionIncrementer.GetCurrentVersion(null).ToString();
+        }
+        else
+        {
+            var currentVersion = VersionLabelRegex.Match(lines[lineIndexes[0]]).Groups["version"].Value;
+            newVersion = versionIncrementer.GetNextVersion(currentVersion, incrementType, prereleaseLabel).ToString();
+        }
+
+        if (lineIndexes.Count == 0)
+        {
+            AppendVersionLabel(lines, newVersion);
+        }
+        else
+        {
+            // Multi-stage Dockerfiles can repeat the same version LABEL per stage; keep every
+            // occurrence in sync rather than only updating the first one found.
+            foreach (var lineIndex in lineIndexes)
+            {
+                lines[lineIndex] = VersionLabelRegex.Replace(lines[lineIndex], match =>
+                    $"{match.Groups["prefix"].Value}{newVersion}{match.Groups["suffix"].Value}");
+            }
         }
 
         // Keep the in-memory definition in step with what was just written - a version-based tag
@@ -94,6 +106,29 @@ public class DockerfileFileHandler(
     // any of its backslash-continuation lines (e.g. "LABEL a=\"1\" \" followed by a line
     // holding the actual version key=value pair), and collects every line within one that
     // matches the version label.
+    /// <summary>
+    /// Adds the version LABEL to a Dockerfile that has none. Appended at the end of the file, which
+    /// puts it in the final build stage - the stage whose labels the built image actually carries -
+    /// without having to interpret the file's structure.
+    /// </summary>
+    private static void AppendVersionLabel(List<string> lines, string version)
+    {
+        var label = $"LABEL {ProjectConstants.DockerImageVersionLabel}=\"{version}\"";
+
+        // Lines keep their own trailing '\r', so match whatever the file already uses rather than
+        // leaving it with mixed endings.
+        if (lines.Any(line => line.EndsWith('\r')))
+            label += '\r';
+
+        // A file ending in a newline splits to a trailing empty entry; inserting before it keeps the
+        // trailing newline and avoids introducing a blank line.
+        var insertAt = lines.Count > 0 && string.IsNullOrWhiteSpace(lines[^1])
+            ? lines.Count - 1
+            : lines.Count;
+
+        lines.Insert(insertAt, label);
+    }
+
     private static List<int> FindVersionLabelLines(List<string> lines)
     {
         var lineIndexes = new List<int>();
