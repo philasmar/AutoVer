@@ -70,6 +70,7 @@ tags the release.
 | `--increment-type <type>` | `Major`, `Minor`, `Patch` or `None`. Overrides the configured default. |
 | `--use-version <version>` | Release a specific version instead of an increment. |
 | `--current` | Print the current version without changing anything. |
+| `--project-name <name>` | With `--current`, print only this project's version, as a bare value. |
 | `--skip-version-tag-check` | Don't require each project to already carry a version. |
 | `--no-commit` | Bump the version without committing (implies no tag). |
 | `--no-tag` | Commit the bump without tagging. |
@@ -77,6 +78,28 @@ tags the release.
 
 `--current` prints a bare value for a single project, so it can be captured
 directly: `VERSION=$(autover version --current)`.
+
+With several projects it prints them labeled instead, since there is no single
+"the" version to capture:
+
+```
+Project1: 1.2.3
+Project2: 4.5.6
+```
+
+Name one to get a bare value back, which is what a pipeline publishing several
+artifacts from one repository needs:
+
+```bash
+VERSION=$(autover version --current --project-name "Project2")   # 4.5.6
+```
+
+The name matches the `Name` in `Projects`, exactly as `change --project-name`
+does, and an unknown name is an error listing the configured ones rather than
+empty output - a typo in a pipeline would otherwise set `VERSION=""` and publish
+a mis-tagged artifact. A project using `Paths` shares one version across its
+files, so naming it prints that; if those files have drifted apart, that is an
+error too rather than a silent pick.
 
 ### `autover changelog`
 

@@ -104,6 +104,15 @@ public class CommandFactory(
         {
             Description = "Print the current version of each project and exit, without incrementing, committing, or tagging anything."
         };
+        // Only meaningful alongside --current. With several projects, --current prints them
+        // labeled, which is readable but not capturable - a caller wanting one version in a
+        // variable had no way to ask for it. Naming the project makes it print bare, so
+        // VERSION=$(autover version --current --project-name "My Image") works with any number
+        // of projects. Same option name and matching rules as `change --project-name`.
+        Option<string> projectNameOption = new("--project-name")
+        {
+            Description = "With --current, print only this project's version, as a bare value. Without --current, ignored."
+        };
 
         versionCommand.Add(OptionProjectPath);
         versionCommand.Add(OptionIncrementType);
@@ -112,6 +121,7 @@ public class CommandFactory(
         versionCommand.Add(noTagOption);
         versionCommand.Add(useVersionOption);
         versionCommand.Add(currentOption);
+        versionCommand.Add(projectNameOption);
         versionCommand.Add(OptionVerbose);
 
         versionCommand.SetAction((parseResult, cancellationToken) => ExecuteCommandAsync(parseResult, async () =>
@@ -123,6 +133,7 @@ public class CommandFactory(
             var optionNoTag = parseResult.GetValue(noTagOption);
             var optionUseVersion = parseResult.GetValue(useVersionOption);
             var optionCurrent = parseResult.GetValue(currentOption);
+            var optionProjectName = parseResult.GetValue(projectNameOption);
 
             var command = new VersionCommand(
                 projectHandler,
@@ -132,7 +143,7 @@ public class CommandFactory(
                 versionHandler,
                 versionIncrementer,
                 toolInteractiveService);
-            await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck, optionNoCommit, optionNoTag, optionUseVersion, optionCurrent);
+            await command.ExecuteAsync(optionProjectPath, optionIncrementType, optionSkipVersionTagCheck, optionNoCommit, optionNoTag, optionUseVersion, optionCurrent, optionProjectName);
         }));
 
         return versionCommand;
