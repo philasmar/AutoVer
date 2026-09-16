@@ -20,7 +20,8 @@ public class VersionCommand(
         bool optionNoCommit,
         bool optionNoTag,
         string? optionUseVersion,
-        bool optionCurrent)
+        bool optionCurrent,
+        string? optionProjectName = null)
     {
         var incrementType = IncrementTypeParser.Parse(optionIncrementType);
 
@@ -28,7 +29,7 @@ public class VersionCommand(
 
         if (optionCurrent)
         {
-            PrintCurrentVersions(userConfiguration);
+            PrintCurrentVersions(userConfiguration, optionProjectName);
             return;
         }
 
@@ -295,8 +296,23 @@ public class VersionCommand(
     // `changelog --release-name`'s convention for shell capture, e.g.
     // VERSION=$(autover version --current). Multiple projects print
     // labeled, since there's no single "the" version to capture bare.
-    private void PrintCurrentVersions(UserConfiguration userConfiguration)
+    private void PrintCurrentVersions(UserConfiguration userConfiguration, string? projectName = null)
     {
+        // Naming a project makes the output bare regardless of how many projects there are, so a
+        // caller can capture one version - VERSION=$(autover version --current --project-name X).
+        // Resolved before the VersionFromTag branch below so an unknown name is always an error
+        // rather than silently printing the repository version.
+        ProjectContainer? requestedProject = null;
+        if (!string.IsNullOrEmpty(projectName))
+        {
+            // Same matching as `change --project-name`: exact, case-sensitive.
+            requestedProject = userConfiguration.Projects.FirstOrDefault(x => x.Name.Equals(projectName));
+            if (requestedProject is null)
+                throw new InvalidProjectNameSpecifiedException(
+                    $"The project '{projectName}' does not exist. Please specify a valid project name. " +
+                    $"Configured: {string.Join(", ", userConfiguration.Projects.Select(x => $"'{x.Name}'"))}.");
+        }
+
         if (userConfiguration.VersionFromTag)
         {
             var tagVersion = versionHandler.GetCurrentTagVersion(userConfiguration);
@@ -305,7 +321,33 @@ public class VersionCommand(
                     $"The Git repository '{userConfiguration.GitRoot}' has no release tag to read a version from yet. " +
                     "Please run 'autover version' first.");
 
+            // One tag carries one version, so every project reports the same thing here - naming
+            // one is redundant but not wrong, and validating it above still catches a typo.
             toolInteractiveService.WriteLine(tagVersion.ToString());
+            return;
+        }
+
+        if (requestedProject is not null)
+        {
+            var requestedVersions = requestedProject.Projects
+                .Select(project => project.ProjectDefinition.Version)
+                .Distinct()
+                .ToList();
+
+            if (requestedVersions.Count == 0)
+                throw new InvalidProjectNameSpecifiedException(
+                    $"The project '{projectName}' has no project files to read a version from.");
+
+            // A container's files share one version by definition (that is what Paths means), so
+            // disagreement means one was edited by hand. Printing the first would quietly publish
+            // a version that does not match what is in the other file.
+            if (requestedVersions.Count > 1)
+                throw new InvalidProjectException(
+                    $"The files of project '{projectName}' carry different versions " +
+                    $"({string.Join(", ", requestedVersions)}), so there is no single version to print. " +
+                    "They are configured to share one - reconcile them, or list them as separate projects.");
+
+            toolInteractiveService.WriteLine(requestedVersions[0]);
             return;
         }
 

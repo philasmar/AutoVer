@@ -388,6 +388,60 @@ public class VersionCommandTests
         await Assert.That(GitUtilities.GetAllTags(_tempDir)).IsEmpty();
     }
 
+    // M. With several projects, `--current` labels each one. Asserted so the bare-value
+    // contract in L stays specific to the single-project case: a caller doing
+    // VERSION=$(autover version --current) on a multi-project repository gets labeled lines,
+    // not a version, which is exactly why --project-name in N exists.
+    [Test]
+    public async Task Current_WithSeveralProjects_LabelsEachVersion()
+    {
+        await SetUpTwoProjectRepo("Project1", "1.2.3", "Project2", "4.5.6", useSameVersionForAllProjects: false);
+
+        var (exitCode, output, _) = await AutoVerUtilities.RunCapturingOutput(["version", "--project-path", _tempDir, "--current"]);
+
+        await Assert.That(exitCode).IsEqualTo(CommandReturnCodes.Success);
+        await Assert.That(output).Contains("Project1: 1.2.3");
+        await Assert.That(output).Contains("Project2: 4.5.6");
+    }
+
+    // N. `--current --project-name` prints that one project's version bare, however many
+    // projects exist. This is what makes VERSION=$(autover version --current --project-name X)
+    // work in a pipeline that publishes several artifacts from one repository - previously the
+    // only capturable output was a single-project repository's.
+    [Test]
+    public async Task CurrentWithProjectName_PrintsThatProjectBare()
+    {
+        await SetUpTwoProjectRepo("Project1", "1.2.3", "Project2", "4.5.6", useSameVersionForAllProjects: false);
+
+        var (exitCode, output, _) = await AutoVerUtilities.RunCapturingOutput(
+            ["version", "--project-path", _tempDir, "--current", "--project-name", "Project2"]);
+
+        await Assert.That(exitCode).IsEqualTo(CommandReturnCodes.Success);
+        await Assert.That(output.Trim()).IsEqualTo("4.5.6");
+        // Bare means bare: no label, and nothing about the project it was not asked about.
+        await Assert.That(output).DoesNotContain("Project2:");
+        await Assert.That(output).DoesNotContain("1.2.3");
+    }
+
+    // O. An unknown --project-name is an error rather than empty output. Left unvalidated, a
+    // typo in a pipeline would set VERSION="" and publish an untagged or mis-tagged artifact.
+    [Test]
+    public async Task CurrentWithUnknownProjectName_FailsAndListsConfiguredProjects()
+    {
+        await SetUpTwoProjectRepo("Project1", "1.2.3", "Project2", "4.5.6", useSameVersionForAllProjects: false);
+
+        var (exitCode, output, error) = await AutoVerUtilities.RunCapturingOutput(
+            ["version", "--project-path", _tempDir, "--current", "--project-name", "DoesNotExist"]);
+
+        await Assert.That(exitCode).IsEqualTo(CommandReturnCodes.UserError);
+        await Assert.That(error).Contains("DoesNotExist");
+        // The message names what IS configured, so the fix does not need a second command.
+        await Assert.That(error).Contains("Project1");
+        await Assert.That(error).Contains("Project2");
+        await Assert.That(error).DoesNotContain("at AutoVer.");
+        await Assert.That(output.Trim()).IsEmpty();
+    }
+
     // `changeFilesDetermineIncrementType` must be true for scenarios that rely on a change
     // file to pick the increment type (B/C/D/K), and false for scenarios with no change
     // file at all (G/H/I/J) — with it true and no change file, VersionCommand resolves the
