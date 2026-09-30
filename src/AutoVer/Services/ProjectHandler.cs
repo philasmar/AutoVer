@@ -45,7 +45,8 @@ public class ProjectHandler(
 
         if (projectPaths.Count == 0)
         {
-            throw new InvalidProjectException($"Failed to find a valid .csproj, .nuspec, or Dockerfile file at path {projectPath}");
+            // pyproject.toml is deliberately not discovered (see PyprojectFileHandler), so say how to use one.
+            throw new InvalidProjectException($"Failed to find a valid .csproj, .nuspec, or Dockerfile file at path {projectPath}. A pyproject.toml is only versioned when listed in .autover/autover.json.");
         }
 
         var projectDefinitions = new List<ProjectDefinition>();
@@ -64,7 +65,7 @@ public class ProjectHandler(
     {
         var normalizedPath = projectPath.Replace('\\', pathManager.DirectorySeparatorChar).Replace('/', pathManager.DirectorySeparatorChar);
         if (!fileManager.Exists(normalizedPath))
-            throw new InvalidProjectException($"Failed to find a valid .csproj, .nuspec, or Dockerfile file at path {normalizedPath}");
+            throw new InvalidProjectException($"Failed to find a valid .csproj, .nuspec, Dockerfile, or pyproject.toml file at path {normalizedPath}");
 
         var handler = projectFileHandlerResolver.Resolve(normalizedPath);
         var fullPath = pathManager.GetFullPath(normalizedPath);
@@ -76,5 +77,11 @@ public class ProjectHandler(
     {
         var handler = projectFileHandlerResolver.Resolve(projectDefinition.ProjectPath);
         handler.UpdateVersion(projectDefinition, incrementType, prereleaseLabel, overrideVersion);
+    }
+
+    public void ValidateVersion(ProjectDefinition projectDefinition, IncrementType incrementType, string? prereleaseLabel = null, string? overrideVersion = null)
+    {
+        var handler = projectFileHandlerResolver.Resolve(projectDefinition.ProjectPath);
+        handler.ValidateVersion(projectDefinition, incrementType, prereleaseLabel, overrideVersion);
     }
 }

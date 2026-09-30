@@ -154,7 +154,7 @@ public class ProjectContainer : IJsonOnDeserialized
         {
             var normalizedPath = path.Replace('\\', _pathManager.DirectorySeparatorChar).Replace('/', _pathManager.DirectorySeparatorChar);
             if (!_fileManager.Exists(normalizedPath))
-                throw new Exception($"Failed to find a valid .csproj, .nuspec, or Dockerfile file at path {normalizedPath}");
+                throw new Exception($"Failed to find a valid .csproj, .nuspec, Dockerfile, or pyproject.toml file at path {normalizedPath}");
 
             var handler = _projectFileHandlerResolver.Resolve(normalizedPath);
             var projectDefinition = handler.Load(_pathManager.GetFullPath(normalizedPath), _fileManager.ReadAllText(normalizedPath));
@@ -188,7 +188,7 @@ public class Project(string path, ProjectDefinition definition)
 
         var normalizedPath = Path.Replace('\\', _pathManager.DirectorySeparatorChar).Replace('/', _pathManager.DirectorySeparatorChar);
         if (!_fileManager.Exists(normalizedPath))
-            throw new Exception($"Failed to find a valid .csproj, .nuspec, or Dockerfile file at path {normalizedPath}");
+            throw new Exception($"Failed to find a valid .csproj, .nuspec, Dockerfile, or pyproject.toml file at path {normalizedPath}");
 
         var handler = _projectFileHandlerResolver.Resolve(normalizedPath);
         ProjectDefinition = handler.Load(_pathManager.GetFullPath(normalizedPath), _fileManager.ReadAllText(normalizedPath));
