@@ -31,6 +31,7 @@ public static class CustomServiceCollectionExtensions
         serviceCollection.TryAdd(new ServiceDescriptor(typeof(IVersionHandler), typeof(VersionHandler), lifetime));
         serviceCollection.TryAddEnumerable(new ServiceDescriptor(typeof(IProjectFileHandler), typeof(CsprojNuspecFileHandler), lifetime));
         serviceCollection.TryAddEnumerable(new ServiceDescriptor(typeof(IProjectFileHandler), typeof(DockerfileFileHandler), lifetime));
+        serviceCollection.TryAddEnumerable(new ServiceDescriptor(typeof(IProjectFileHandler), typeof(PyprojectFileHandler), lifetime));
         serviceCollection.TryAdd(new ServiceDescriptor(typeof(IProjectFileHandlerResolver), typeof(ProjectFileHandlerResolver), lifetime));
 
         serviceCollection.AddSingleton<App>();

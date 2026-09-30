@@ -13,8 +13,9 @@ Requires the .NET 10 SDK or later. The installed command is `autover`.
 
 * Versions one or many projects in a single git repository, with independent or
   shared version numbers
-* Versions `.csproj`, `.nuspec` and `Dockerfile` projects - the latter through the
-  `org.opencontainers.image.version` label
+* Versions `.csproj`, `.nuspec`, `Dockerfile` and Python `pyproject.toml` projects -
+  a Dockerfile through the `org.opencontainers.image.version` label, a Python project
+  through `[project] version`
 * Applies Patch, Minor or Major increments, chosen per release or per change
 * Commits the version bump and tags the release
 * Generates a `CHANGELOG.md` from conventional commit messages or from
@@ -155,6 +156,33 @@ Each entry in `Projects` takes:
 | `IncrementType` | An increment specific to this project. |
 | `PrereleaseLabel` | A prerelease label to apply, e.g. `beta.1`. |
 
+### Python projects
+
+A `pyproject.toml` is versioned through the `version` key of its `[project]` table
+([PEP 621](https://peps.python.org/pep-0621/)). Only that value is rewritten: quoting,
+spacing, comments, line endings and everything else in the file stay as they were (a
+UTF-8 byte-order mark is not kept).
+
+```json
+{ "Projects": [ { "Name": "my-package", "Path": "pyproject.toml" } ] }
+```
+
+* **It must be listed in `Projects`** - a `pyproject.toml` is never auto-discovered.
+  Plenty of repositories keep one purely for tool settings (black, ruff, pytest), and
+  discovering those would start versioning a lint config.
+* **The version must be a plain, single-line string in `[project]`**, in AutoVer's
+  `MAJOR.MINOR.PATCH[-label]` form. A project that lists `"version"` in `dynamic` (its
+  build backend computes the version, e.g. from git tags) is refused, as is Poetry's
+  pre-2.0 `[tool.poetry]` version and a normalized spelling such as `1.2.3b1` - write
+  that one as `1.2.3-b1`, which is the same version.
+* **Prerelease labels must be Python pre-releases**
+  ([PEP 440](https://peps.python.org/pep-0440/)): `alpha`/`a`, `beta`/`b`,
+  `rc`/`c`/`pre`/`preview` or `dev`, optionally numbered. `beta.1` writes `1.2.3-beta.1`,
+  which pip reads as `1.2.3b1`. Anything else fails the release before any file is
+  written: `hotfix` would make an uninstallable package, and `post.1` or `1` would be a
+  *post*-release, which pip ranks above `1.2.3` and installs by default. Note that pip
+  orders `dev` before `alpha`, where AutoVer's own ordering puts it after.
+
 ## Tag and release name formats
 
 By default AutoVer tags a release by date - `release_2026-09-02`, or
@@ -258,8 +286,9 @@ release and cover the wrong commit range. If no release tag is reachable at all
 
 A project that doesn't carry a version yet is **seeded** rather than rejected.
 AutoVer creates the version field - a `<Version>` element in an unconditioned
-`PropertyGroup`, a `<version>` in a nuspec's `metadata`, or an
-`org.opencontainers.image.version` LABEL appended to a Dockerfile - and writes
+`PropertyGroup`, a `<version>` in a nuspec's `metadata`, an
+`org.opencontainers.image.version` LABEL appended to a Dockerfile, or a `version` key
+after `name` in a pyproject.toml's `[project]` table - and writes
 `InitialVersion` into it, taken as-is rather than incremented. Every release after
 that reads the field back and increments it in the ordinary way, so seeding only
 ever happens once.
