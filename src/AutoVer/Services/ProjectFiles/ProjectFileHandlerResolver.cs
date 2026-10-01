@@ -10,7 +10,7 @@ public class ProjectFileHandlerResolver(
     public IProjectFileHandler Resolve(string projectPath)
     {
         if (!TryResolve(projectPath, out var handler))
-            throw new InvalidProjectException($"Invalid project path {projectPath}. The project path must point to a .csproj, .nuspec, or Dockerfile file.");
+            throw new InvalidProjectException($"Invalid project path {projectPath}. The project path must point to a .csproj, .nuspec, Dockerfile, or pyproject.toml file.");
 
         return handler!;
     }

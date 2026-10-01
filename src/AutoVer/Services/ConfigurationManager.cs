@@ -56,10 +56,20 @@ public class ConfigurationManager(
         }
         catch (Exception ex)
         {
-            throw new InvalidUserConfigurationException(
-                $"There was an issue loading the user configuration at '{configPath}'.", 
-                ex);
+            throw new InvalidUserConfigurationException(LoadFailureMessage(configPath, ex), ex);
         }
+    }
+
+    // Saying only *where* loading failed hides the part the user can act on - e.g. a project file
+    // AutoVer cannot version, or a JSON syntax error - so the cause is included in the message.
+    private static string LoadFailureMessage(string configPath, Exception ex)
+    {
+        var cause = ex;
+        // Stop at a JsonException too: it carries the JSON path and line the user needs, while its
+        // inner exception only says which token type was wrong.
+        while (cause is not (AutoVerException or JsonException) && cause.InnerException is not null)
+            cause = cause.InnerException;
+        return $"There was an issue loading the user configuration at '{configPath}': {cause.Message}";
     }
 
     public async Task<UserConfiguration> RetrieveUserConfiguration(string? projectPath, IncrementType incrementType, string? tagName = null)
@@ -149,9 +159,7 @@ public class ConfigurationManager(
         }
         catch (Exception ex)
         {
-            throw new InvalidUserConfigurationException(
-                $"There was an issue loading the user configuration at '{configPath}'.",
-                ex);
+            throw new InvalidUserConfigurationException(LoadFailureMessage(configPath, ex), ex);
         }
     }
 

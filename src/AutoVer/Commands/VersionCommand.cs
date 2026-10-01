@@ -64,6 +64,8 @@ public class VersionCommand(
         }
 
         var projectsIncremented = false;
+        var plannedUpdates = new List<PlannedUpdate>();
+        var containersToStage = new List<ProjectContainer>();
         foreach (var availableProject in userConfiguration.Projects)
         {
             if (!availableProject.IncrementType.Equals(IncrementType.None))
@@ -80,11 +82,11 @@ public class VersionCommand(
                     incrementType);
                 foreach (var project in availableProject.Projects)
                 {
-                    projectHandler.UpdateVersion(
+                    plannedUpdates.Add(new PlannedUpdate(
                         project.ProjectDefinition, 
                         projectIncrementType, 
                         availableProject.PrereleaseLabel,
-                        optionUseVersion ?? repositorySeedVersion ?? maxNextVersion?.ToString() ?? localMaxVersion?.ToString());
+                        optionUseVersion ?? repositorySeedVersion ?? maxNextVersion?.ToString() ?? localMaxVersion?.ToString()));
                 }
             }
             else
@@ -102,11 +104,11 @@ public class VersionCommand(
                         incrementType);
                     foreach (var project in availableProject.Projects)
                     {
-                        projectHandler.UpdateVersion(
+                        plannedUpdates.Add(new PlannedUpdate(
                             project.ProjectDefinition, 
                             projectIncrementType, 
                             availableProject.PrereleaseLabel,
-                            optionUseVersion ?? SeedVersionFor(availableProject, userConfiguration) ?? localMaxVersion?.ToString());
+                            optionUseVersion ?? SeedVersionFor(availableProject, userConfiguration) ?? localMaxVersion?.ToString()));
                     }
                 }
                 else
@@ -120,19 +122,32 @@ public class VersionCommand(
                         continue;
                     foreach (var project in availableProject.Projects)
                     {
-                        projectHandler.UpdateVersion(
+                        plannedUpdates.Add(new PlannedUpdate(
                             project.ProjectDefinition, 
                             projectIncrementType, 
                             availableProject.PrereleaseLabel, 
-                            optionUseVersion ?? SeedVersionFor(availableProject, userConfiguration) ?? localMaxVersion?.ToString());
+                            optionUseVersion ?? SeedVersionFor(availableProject, userConfiguration) ?? localMaxVersion?.ToString()));
                     }
                 }
             }
 
-            foreach (var project in availableProject.Projects)
-            {
+            containersToStage.Add(availableProject);
+        }
+
+        // Every project is checked before any is written, so a version a file type refuses up front
+        // (see IProjectFileHandler.ValidateVersion - today a pyproject.toml given a non-Python
+        // version) fails the release before any file changes. A failure only discovered while
+        // writing (e.g. a nuspec with no <metadata>) can still leave earlier files bumped, as before.
+        foreach (var update in plannedUpdates)
+            projectHandler.ValidateVersion(update.Definition, update.IncrementType, update.PrereleaseLabel, update.OverrideVersion);
+
+        foreach (var update in plannedUpdates)
+            projectHandler.UpdateVersion(update.Definition, update.IncrementType, update.PrereleaseLabel, update.OverrideVersion);
+
+        foreach (var container in containersToStage)
+        {
+            foreach (var project in container.Projects)
                 gitHandler.StageChanges(userConfiguration, project.Path);
-            }
         }
 
         // When done, reset the config file if the user had one
@@ -166,6 +181,12 @@ public class VersionCommand(
             }
         }
     }
+
+    private sealed record PlannedUpdate(
+        ProjectDefinition Definition,
+        IncrementType IncrementType,
+        string? PrereleaseLabel,
+        string? OverrideVersion);
 
     /// <summary>
     /// Whether nothing in the repository carries a version yet, in which case the whole repository is
